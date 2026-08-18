@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FUN星球 合約備忘錄產生器</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  :root {
+    --purple: #72469C;
+    --blue: #60B7E6;
+    --yellow: #FDCE73;
+    --cream: #FFF7ED;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: var(--cream);
+    color: #3a2a52;
+  }
+  .app {
+    display: flex;
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+    align-items: flex-start;
+  }
+  .panel {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(114,70,156,0.08);
+  }
+  .form-panel {
+    width: 460px;
+    flex-shrink: 0;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    position: sticky;
+    top: 20px;
+  }
+  .preview-wrap { flex: 1; min-width: 0; }
+  h1 { color: var(--purple); font-size: 18px; margin: 0 0 4px; }
+  .subtitle { font-size: 12px; color: #9a8ab8; margin-bottom: 16px; }
+  h2.section-title {
+    font-size: 13px; color: var(--purple); font-weight: 700;
+    margin: 18px 0 8px; padding-top: 12px; border-top: 1px solid #f0e8f7;
+  }
+  h2.section-title:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--purple); margin: 8px 0 4px; }
+  .hint { font-size: 11px; color: #9a8ab8; margin: -2px 0 6px; }
+  input[type="text"], input[type="number"], input[type="date"], input[type="time"], textarea, select {
+    width: 100%; padding: 8px 10px; border: 1.5px solid #e6dcf2; border-radius: 8px;
+    font-size: 13px; background: var(--cream); color: #3a2a52; font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 50px; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--blue); }
+  .row2 { display: flex; gap: 8px; }
+  .row2 > div { flex: 1; }
+  .toggle { display: flex; gap: 6px; }
+  .toggle .opt {
+    flex: 1; text-align: center; padding: 8px 4px; border: 1.5px solid #e6dcf2;
+    border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--purple); cursor: pointer;
+  }
+  .toggle .opt.selected { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .checkbox-row {
+    display: flex; align-items: flex-start; gap: 8px; margin: 8px 0;
+    padding: 8px; background: var(--cream); border: 1.5px solid #e6dcf2; border-radius: 8px;
+  }
+  .checkbox-row input[type="checkbox"] { width: auto; margin-top: 2px; }
+  .checkbox-row .label-text { font-size: 12px; color: #3a2a52; line-height: 1.5; }
+  .checkbox-row .label-text b { color: var(--purple); }
+  .fee-item { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
+  .fee-item input:first-child { flex: 2; }
+  .fee-item input:last-child { flex: 1; }
+  .btn {
+    padding: 8px 14px; border: none; border-radius: 8px; background: var(--purple);
+    color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+  .btn.danger { background: #d97a7a; }
+  .btn.small { padding: 4px 8px; font-size: 11px; }
+  .pdf-btn {
+    width: 100%; padding: 12px; margin-top: 16px; border: none; border-radius: 10px;
+    background: var(--yellow); color: #5a4210; font-size: 14px; font-weight: 800; cursor: pointer;
+  }
+
+  #doc { background: #fff; max-width: 900px; margin: 0 auto; padding: 48px 44px; color: #2a2a2a; font-size: 13px; line-height: 1.75; }
+  #doc .doc-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 3px solid var(--purple); padding-bottom: 14px; margin-bottom: 20px; }
+  #doc .brand-logo { height: 50px; display:block; }
+  #doc .brand-sub { font-size: 11px; color: #8a7aa8; margin-top: 2px; }
+  #doc .doc-title { font-size: 20px; font-weight: 800; color: #2a2a2a; text-align:right; }
+  #doc h3 { text-align: center; font-size: 17px; color: var(--purple); margin: 0 0 22px; }
+  #doc .party-block { font-size: 13px; margin-bottom: 16px; }
+  #doc .party-block .party-line { margin: 4px 0; }
+  #doc .intro { margin: 14px 0 20px; }
+  #doc .clause-title { font-weight: 700; color: var(--purple); font-size: 14px; margin: 18px 0 8px; }
+  #doc ol.clause-list { margin: 0; padding-left: 20px; }
+  #doc ol.clause-list li { margin-bottom: 8px; }
+  #doc .fee-table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; font-size: 12.5px; }
+  #doc .fee-table td { padding: 5px 4px; border-bottom: 1px solid #eee; }
+  #doc .fee-table tr.total td { font-weight: 700; color: var(--purple); border-bottom: none; padding-top: 8px; }
+  #doc .sign-block { display:flex; justify-content:space-between; margin-top: 30px; padding-top: 18px; border-top: 1px dashed #ccc; font-size: 12px; }
+  #doc .sign-block .col { width: 47%; }
+  #doc .sign-line { margin-top: 40px; border-bottom: 1px solid #999; }
+  #doc .doc-date { text-align: center; margin-top: 28px; font-size: 13px; }
+
+  @media print { body { background: #fff; } .form-panel, .pdf-btn { display:none; } .app { padding:0; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="panel form-panel">
+    <h1>📝 合約備忘錄產生器</h1>
+    <div class="subtitle">選類型、填資料，右邊自動產出合約／備忘錄全文</div>
+
+    <h2 class="section-title">文件類型</h2>
+    <div class="toggle">
+      <div class="opt selected" data-k="docType" data-v="contract" onclick="setToggle('docType','contract')">活動表演合約書</div>
+      <div class="opt" data-k="docType" data-v="mou" onclick="setToggle('docType','mou')">合作備忘錄</div>
+    </div>
+
+    <label style="margin-top:14px;">合作類型（決定「活動進行」條款內容）</label>
+    <div class="toggle">
+      <div class="opt selected" data-k="actType" data-v="event" onclick="setToggle('actType','event')">外場活動</div>
+      <div class="opt" data-k="actType" data-v="training" onclick="setToggle('actType','training')">培訓課程</div>
+    </div>
+
+    <h2 class="section-title">甲方資訊</h2>
+    <label>單位名稱</label>
+    <input type="text" id="clientName" placeholder="例：吉的堡教學中心" oninput="render()">
+    <div class="row2">
+      <div><label>代表人</label><input type="text" id="clientRep" oninput="render()"></div>
+      <div><label>統一編號（選填）</label><input type="text" id="clientTaxId" oninput="render()"></div>
+    </div>
+    <div class="row2">
+      <div><label>聯絡電話</label><input type="text" id="clientPhone" oninput="render()"></div>
+      <div><label>地址</label><input type="text" id="clientAddr" oninput="render()"></div>
+    </div>
+
+    <h2 class="section-title">活動／培訓資訊</h2>
+    <label>活動／培訓名稱</label>
+    <input type="text" id="eventTitle" placeholder="例：幼兒園教師說故事能力培訓" oninput="render()">
+    <div class="row2">
+      <div><label>日期</label><input type="date" id="eventDate" onchange="render()"></div>
+      <div><label>時間</label><input type="text" id="eventTime" placeholder="例：上午9:00-12:00" oninput="render()"></div>
+    </div>
+    <label>地點</label>
+    <input type="text" id="eventLocation" oninput="render()">
+    <label>參與人數</label>
+    <input type="text" id="headcount" placeholder="例：約90人" oninput="render()">
+
+    <div class="checkbox-row" id="scaleNoteRow" style="display:none;">
+      <input type="checkbox" id="scaleNote" onchange="render()">
+      <div class="label-text"><b>加入人數規模但書</b>：因人數規模較大，現場示範與個別點評僅能挑選部分學員／參與者進行，其餘由旁觀學習。</div>
+    </div>
+
+    <h2 class="section-title">費用</h2>
+    <div id="feeItems"></div>
+    <div style="margin-top:6px;">
+      <button class="btn small" onclick="addFeeItem()">+ 新增費用項目</button>
+    </div>
+    <label style="margin-top:10px;">交通出勤費（留空或 0 則不顯示）</label>
+    <input type="number" id="transportFee" placeholder="0" oninput="render()">
+    <label>訂金比例</label>
+    <input type="number" id="depositPct" value="50" oninput="render()">
+    <div class="hint">% ，取消/退款門檻日期會依活動日期自動計算</div>
+
+    <h2 class="section-title">影音／素材條款</h2>
+    <div class="checkbox-row">
+      <input type="checkbox" id="allowRecording" onchange="render()">
+      <div class="label-text"><b>甲方可全程錄影僅供內部存檔</b>：不得公開播放、傳輸或做商業用途。</div>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="materialAuth" onchange="render()">
+      <div class="label-text"><b>甲方提供素材授權乙方行銷使用</b>：甲方提供現場照片／錄影檔案，授權乙方作為行銷宣傳素材；乙方使用時，畫面涉及人員肖像處會進行馬賽克模糊處理。</div>
+    </div>
+
+    <h2 class="section-title">FUN星球聯絡窗口</h2>
+    <select id="funContact" onchange="render()">
+      <option value="0">劉珽愉（小魚姐姐）</option>
+      <option value="1">盧佳伶（鈴噹姐姐）</option>
+      <option value="2">黃筱娟（Lulu 姐姐）</option>
+    </select>
+
+    <button class="pdf-btn" onclick="downloadPdf()">📄 下載 PDF</button>
+  </div>
+
+  <div class="preview-wrap">
+    <div class="panel" style="padding:24px;">
+      <div id="doc"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const CONTACTS = [
+  { name: '劉珽愉（小魚姐姐）', phone: '0910-862-489' },
+  { name: '盧佳伶（鈴噹姐姐）', phone: '0982-132-674' },
+  { name: '黃筱娟（Lulu 姐姐）', phone: '0919-170-345' }
+];
+const SELLER = {
+  name: '星球能量無限但時間有限公司',
+  taxId: '00012776',
+  rep: '盧佳伶',
+  addr: '高雄巿苓雅區憲政路123巷8號4樓',
+  phone: '0982132674'
+};
+
+let state = { docType: 'contract', actType: 'event' };
+let feeItems = [{ uid: 1, name: '', amount: '' }];
+let uidSeed = 2;
+
+function setToggle(key, val) {
+  state[key] = val;
+  document.querySelectorAll(`.opt[data-k="${key}"]`).forEach(el => {
+    el.classList.toggle('selected', el.dataset.v === val);
+  });
+  document.getElementById('scaleNoteRow').style.display = (key === 'actType' ? val : state.actType) === 'training' ? 'flex' : 'none';
+  render();
+}
+
+function addFeeItem() {
+  feeItems.push({ uid: uidSeed++, name: '', amount: '' });
+  renderFeeItems();
+  render();
+}
+function removeFeeItem(uid) {
+  feeItems = feeItems.filter(i => i.uid !== uid);
+  renderFeeItems();
+  render();
+}
+function updateFeeItem(uid, field, val) {
+  const item = feeItems.find(i => i.uid === uid);
+  if (!item) return;
+  item[field] = val;
+  render();
+}
+function renderFeeItems() {
+  document.getElementById('feeItems').innerHTML = feeItems.map(item => `
+    <div class="fee-item">
+      <input type="text" placeholder="項目名稱（例：講師費）" value="${item.name}" oninput="updateFeeItem(${item.uid},'name',this.value)">
+      <input type="number" placeholder="金額" value="${item.amount}" oninput="updateFeeItem(${item.uid},'amount',this.value)">
+      <button class="btn danger small" onclick="removeFeeItem(${item.uid})">×</button>
+    </div>
+  `).join('');
+}
+
+function fmt(n) { return '$' + Math.round(n).toLocaleString('zh-Hant'); }
+
+function toRocDate(d) {
+  if (!d) return '＿＿年＿月＿日';
+  return `${d.getFullYear() - 1911}年${d.getMonth()+1}月${d.getDate()}日`;
+}
+function addDays(d, days) {
+  const nd = new Date(d);
+  nd.setDate(nd.getDate() + days);
+  return nd;
+}
+
+function getIntroText(clientName, eventTitle) {
+  const cn = clientName || '＿＿＿＿';
+  const et = eventTitle || '＿＿＿＿';
+  const actWord = state.actType === 'training' ? '培訓課程' : '說故事活動';
+  const docWord = state.docType === 'mou' ? '本合作備忘錄（以下稱本備忘錄）' : '本合約';
+  return `緣甲方主辦「${et}」，委任乙方進行${actWord}（以下簡稱本活動），為確保本活動順利進行，甲、乙雙方協議訂定條款如下：`;
+}
+
+function getEventProcessClauses(scaleNoteOn, headcount) {
+  if (state.actType === 'training') {
+    const list = [
+      `培訓日期時間與場地：甲方需於培訓執行日前提供場地資訊，並確保場地具備基本教學設備（投影設備、麥克風、白板等），供乙方評估是否符合本次培訓需求。`,
+      `甲方應於培訓開始前完成學員報到與場地佈置，並提供至少1位工作人員駐守現場，以便突發狀況給予支援。`,
+    ];
+    if (scaleNoteOn) {
+      list.push(`因本次培訓參與人數${headcount ? '達' + headcount : '規模較大'}，現場示範與個別點評僅能挑選部分學員進行，其餘學員由旁觀學習，恕無法逐一照顧每位學員，此點甲方應於招生／宣傳時向學員說明。`);
+    }
+    list.push(`甲方應自行承擔因培訓規劃不良所產生的風險與責任（例如場地設備不足、時間安排衝突、參與人數超出場地容量等問題）。若因規劃不當導致乙方無法順利執行培訓，或其他相關當事人受到損失或損害，甲方需負責賠償所有損失及損害，乙方不需對此承擔任何責任。`);
+    list.push(`若乙方因個人因素導致培訓無法舉行，乙方應在發現無法舉行時，立即通知甲方，並負擔甲方因此遭受的直接損失（包括但不限於預付款項、預訂場地、設備租用費用、廣告宣傳費用等）。若乙方無法履行本${state.docType==='mou'?'備忘錄':'合約'}，亦不得對甲方提出任何索賠或追究責任。`);
+    return list;
+  }
+  const list = [
+    `本活動日期時間與場地：甲方需於活動前一個月提供場地照片或影片供乙方評估。若場地不符合需求（如非密閉空間、擴音設備不足等），雙方需就此協商解決。`,
+    `甲方應提供合適之活動場地，並由乙方自行攜帶故事表演所需之教學擴音設備。召集觀眾、宣傳、主持等事項由甲方負責，活動當日故事人員抵達現場後，負責將故事完整呈現。本活動進行中，甲方應提供至少1位工作人員駐守現場，以便突發狀況給予支援。`,
+    `若需乙方故事人員協助進行說故事以外的活動（例如訪談、主持、導覽或融入商品介紹等），甲方應在活動討論階段及乙方報價之前明確提出相關需求。一經報價確定，將不再接受任何增添要求。`,
+    `甲方應自行承擔因活動規劃不良所產生的風險與責任（例如場地設置不當、擴音設備不足、活動時間衝突、參加人數超出場地容量等問題）。若因規劃不當導致乙方無法順利執行活動，或其他相關當事人受到損失或損害，甲方需負責賠償所有損失及損害，乙方不需對此承擔任何責任。`,
+    `若乙方因個人因素導致活動無法舉行，乙方應在發現無法舉行時，立即通知甲方，並負擔甲方因此遭受的直接損失（包括但不限於預付款項、預訂場地、設備租用費用、廣告宣傳費用等）。若乙方無法履行本${state.docType==='mou'?'備忘錄':'合約'}，亦不得對甲方提出任何索賠或追究責任。`
+  ];
+  return list;
+}
+
+function getCopyrightClauses(allowRecording, materialAuth) {
+  const actWord = state.actType === 'training' ? '培訓' : '活動';
+  const list = [`乙方因參與本${actWord}所提供之教案、故事道具、教具及乙方人員之肖像權，其智慧財產權與相關權利概歸乙方所有。`];
+  if (allowRecording) {
+    list.push(`本${actWord}如有錄影需求，應事先取得乙方同意。甲方因內部存檔需求所進行之影音紀錄，其著作財產權歸乙方所有，乙方授權甲方僅得於「內部存檔紀錄」範圍內使用，不得公開播放、傳輸或作任何商業用途。`);
+  } else {
+    list.push(`本${actWord}應甲方要求，現場不開放拍照、攝影及錄音。`);
+  }
+  if (materialAuth) {
+    list.push(`甲方應提供本次${actWord}現場之照片及／或錄影檔案予乙方，授權乙方於後續行銷宣傳素材使用；乙方使用前述素材時，如畫面涉及甲方人員（含學員、教師）肖像，應進行馬賽克模糊處理，以保護個人隱私。`);
+  }
+  list.push(`乙方保證${state.actType==='training'?'授課':'表演'}內容，絕無侵害第三人之權益或違反法令之情事發生，其內容如有用及第三人之著作，並應完整取得授權。`);
+  return list;
+}
+
+function render() {
+  const clientName = document.getElementById('clientName').value;
+  const clientRep = document.getElementById('clientRep').value;
+  const clientTaxId = document.getElementById('clientTaxId').value;
+  const clientPhone = document.getElementById('clientPhone').value;
+  const clientAddr = document.getElementById('clientAddr').value;
+  const eventTitle = document.getElementById('eventTitle').value;
+  const eventDateVal = document.getElementById('eventDate').value;
+  const eventDate = eventDateVal ? new Date(eventDateVal + 'T00:00:00') : null;
+  const eventTime = document.getElementById('eventTime').value;
+  const eventLocation = document.getElementById('eventLocation').value;
+  const headcount = document.getElementById('headcount').value;
+  const scaleNoteOn = document.getElementById('scaleNote').checked;
+  const transportFee = parseFloat(document.getElementById('transportFee').value) || 0;
+  const depositPct = parseFloat(document.getElementById('depositPct').value) || 50;
+  const allowRecording = document.getElementById('allowRecording').checked;
+  const materialAuth = document.getElementById('materialAuth').checked;
+  const funContact = CONTACTS[parseInt(document.getElementById('funContact').value, 10)];
+
+  const feeSubtotal = feeItems.reduce((s,i) => s + (parseFloat(i.amount) || 0), 0);
+  const totalAmount = feeSubtotal + transportFee;
+  const deposit = totalAmount * depositPct / 100;
+
+  const docTitle = state.docType === 'mou' ? '活動表演合作備忘錄' : '活動表演合約書';
+  const partyRole = state.docType === 'mou' ? '立備忘錄人' : '立書人';
+
+  let refundHtml = '';
+  if (eventDate) {
+    const d28 = addDays(eventDate, -28);
+    const d27 = addDays(eventDate, -27);
+    const d22 = addDays(eventDate, -22);
+    const d21 = addDays(eventDate, -21);
+    refundHtml = `
+      <li>若因可歸責甲方之事由，於活動日 ${toRocDate(d28)}（含）以前告知取消，可退還活動總金額之 20%。</li>
+      <li>若於活動日 ${toRocDate(d27)} 至 ${toRocDate(d22)}（含）期間告知取消，訂金不予退還，但可保留延後使用，最多保留半年（需於「新」日期至少前30日預約，否則無法保留檔期）。</li>
+      <li>若於活動日 ${toRocDate(d21)} 至活動當日期間告知取消，訂金不予退還，且不得延後使用。</li>
+    `;
+  } else {
+    refundHtml = `
+      <li>若因可歸責甲方之事由，於活動日28日前（含）告知取消，可退還活動總金額之 20%。</li>
+      <li>若於活動日前27～22日（含）期間告知取消，訂金不予退還，但可保留延後使用，最多保留半年（需提前30日預約新日期）。</li>
+      <li>若於活動日前21日至活動當日期間告知取消，訂金不予退還，且不得延後使用。</li>
+    `;
+  }
+
+  const eventProcessList = getEventProcessClauses(scaleNoteOn, headcount).map(t => `<li>${t}</li>`).join('');
+  const copyrightList = getCopyrightClauses(allowRecording, materialAuth).map(t => `<li>${t}</li>`).join('');
+
+  const feeRows = feeItems.filter(i => i.name || i.amount).map(i => `
+    <tr><td>${i.name || '（項目）'}</td><td style="text-align:right;">${fmt(parseFloat(i.amount)||0)}</td></tr>
+  `).join('');
+  const transportRow = transportFee > 0 ? `<tr><td>交通出勤費用</td><td style="text-align:right;">${fmt(transportFee)}</td></tr>` : '';
+
+  const today = new Date();
+  const signDateStr = toRocDate(today);
+
+  document.getElementById('doc').innerHTML = `
+    <div class="doc-header">
+      <div>
+        <img src="logo.png" alt="FUN星球" class="brand-logo">
+        <div class="brand-sub">${SELLER.name}｜統編 ${SELLER.taxId}</div>
+      </div>
+      <div class="doc-title">${docTitle}</div>
+    </div>
+
+    <h3>${docTitle}</h3>
+
+    <div class="party-block">
+      <div class="party-line">${partyRole}：</div>
+      <div class="party-line">${clientName || '＿＿＿＿＿＿＿＿＿＿'}　（以下簡稱甲方）</div>
+      <div class="party-line">${SELLER.name}　（以下簡稱乙方）</div>
+    </div>
+
+    <div class="intro">${getIntroText(clientName, eventTitle)}</div>
+
+    <div class="clause-title">一、${state.actType === 'training' ? '培訓' : '活動'}進行</div>
+    <ol class="clause-list">
+      ${eventProcessList}
+    </ol>
+    <div style="font-size:12px;color:#666;margin:-4px 0 10px 20px;">
+      日期：${eventDate ? toRocDate(eventDate) : '＿＿＿＿'}　時間：${eventTime || '＿＿＿＿'}　地點：${eventLocation || '＿＿＿＿'}　人數：${headcount || '＿＿＿＿'}
+    </div>
+
+    <div class="clause-title">二、費用說明</div>
+    <table class="fee-table">
+      ${feeRows}${transportRow}
+      <tr class="total"><td>總金額</td><td style="text-align:right;">${fmt(totalAmount)}</td></tr>
+    </table>
+
+    <div class="clause-title">三、費用支付方式</div>
+    <ol class="clause-list">
+      <li>雙方簽署本${state.docType==='mou'?'備忘錄':'合約'}當天，甲方應向乙方支付活動總金額的 ${depositPct}%（新台幣 ${fmt(deposit)} 元）作為訂金。</li>
+      ${refundHtml}
+      <li>甲方需於活動場次全數完成後三個工作天內支付尾款，以匯款或現金支付至乙方指定帳戶。</li>
+      <li>如有逾期未付款情形，甲方需支付每日活動費用1%的逾期費用，直到全部支付為止。</li>
+    </ol>
+
+    <div class="clause-title">四、著作權</div>
+    <ol class="clause-list">
+      ${copyrightList}
+    </ol>
+
+    <div class="clause-title">五、違約</div>
+    <ol class="clause-list">
+      <li>任一方如有違約之情事發生，他方得向違約方請求活動總金額之20%做為損害賠償（包括但不限於訴訟費及律師費用），並得終止或解除本${state.docType==='mou'?'備忘錄':'合約'}關係。</li>
+    </ol>
+
+    <div class="clause-title">六、附則</div>
+    <ol class="clause-list">
+      <li>本${state.docType==='mou'?'備忘錄':'合約書'}之解釋及其他未盡事宜，悉依中華民國現行相關法令辦理。</li>
+      <li>因本${state.docType==='mou'?'備忘錄':'合約'}滋生爭議時，雙方同意先經友好協商解決；如無法協商解決而涉訟時，雙方同意以台灣高雄地方法院為第一審管轄法院。</li>
+    </ol>
+
+    <div class="sign-block">
+      <div class="col">
+        <div>甲　方：（簽章）</div>
+        <div class="sign-line"></div>
+        <div style="margin-top:10px;">統一編號：${clientTaxId || '　'}</div>
+        <div>代　表　人：${clientRep || '　'}</div>
+        <div>地　　　址：${clientAddr || '　'}</div>
+        <div>電　　　話：${clientPhone || '　'}</div>
+      </div>
+      <div class="col">
+        <div>乙　方：${SELLER.name}（簽章）</div>
+        <div class="sign-line"></div>
+        <div style="margin-top:10px;">統一編號：${SELLER.taxId}</div>
+        <div>代　表　人：${SELLER.rep}</div>
+        <div>地　　　址：${SELLER.addr}</div>
+        <div>電　　　話：${SELLER.phone}</div>
+        <div style="margin-top:6px;">聯絡人：${funContact.name}</div>
+      </div>
+    </div>
+
+    <div class="doc-date">中　華　民　國　${signDateStr}</div>
+  `;
+}
+
+function downloadPdf() {
+  const el = document.getElementById('doc');
+  const clientName = document.getElementById('clientName').value || '客戶';
+  const docTitle = state.docType === 'mou' ? '合作備忘錄' : '合約書';
+  const today = new Date().toISOString().slice(0,10);
+  window.scrollTo(0, 0);
+
+  html2pdf().set({
+    margin: 0,
+    filename: `FUN星球${docTitle}_${clientName}_${today}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['css', 'legacy'] }
+  }).from(el).save();
+}
+
+renderFeeItems();
+render();
+</script>
+</body>
+</html>
