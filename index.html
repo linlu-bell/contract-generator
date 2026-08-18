@@ -97,17 +97,19 @@
   #doc h3 { text-align: center; font-size: 17px; color: var(--purple); margin: 0 0 22px; }
   #doc .party-block { font-size: 13px; margin-bottom: 16px; }
   #doc .party-block .party-line { margin: 4px 0; }
+  #doc .suffix { margin-left: 0.6em; }
   #doc .intro { margin: 14px 0 20px; }
-  #doc .clause-title { font-weight: 700; color: var(--purple); font-size: 14px; margin: 18px 0 8px; }
+  #doc .clause-title { font-weight: 700; color: var(--purple); font-size: 14px; margin: 18px 0 8px; page-break-after: avoid; break-after: avoid; }
   #doc ol.clause-list { margin: 0; padding-left: 20px; }
-  #doc ol.clause-list li { margin-bottom: 8px; }
+  #doc ol.clause-list li { margin-bottom: 8px; page-break-inside: avoid; break-inside: avoid; }
   #doc .fee-table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; font-size: 12.5px; }
   #doc .fee-table td { padding: 5px 4px; border-bottom: 1px solid #eee; }
   #doc .fee-table tr.total td { font-weight: 700; color: var(--purple); border-bottom: none; padding-top: 8px; }
-  #doc .sign-block { display:flex; justify-content:space-between; margin-top: 30px; padding-top: 18px; border-top: 1px dashed #ccc; font-size: 12px; }
+  #doc .meta-line span { margin-right: 1.2em; }
+  #doc .sign-block { display:flex; justify-content:space-between; margin-top: 30px; padding-top: 18px; border-top: 1px dashed #ccc; font-size: 12px; page-break-inside: avoid; break-inside: avoid; }
   #doc .sign-block .col { width: 47%; }
   #doc .sign-block .field-row { display:flex; margin: 2px 0; }
-  #doc .sign-block .field-label { display:inline-block; width: 4.6em; flex-shrink:0; letter-spacing: 2px; }
+  #doc .sign-block .field-label { display:inline-block; width: 5.6em; flex-shrink:0; white-space: nowrap; }
   #doc .sign-line { margin-top: 40px; border-bottom: 1px solid #999; }
   #doc .doc-date { text-align: center; margin-top: 28px; font-size: 13px; }
 
@@ -430,8 +432,8 @@ function render() {
 
     <div class="party-block">
       <div class="party-line">${partyRole}：</div>
-      <div class="party-line">${clientName || '＿＿＿＿＿＿＿＿＿＿'}　（以下簡稱甲方）</div>
-      <div class="party-line">${SELLER.name}　（以下簡稱乙方）</div>
+      <div class="party-line">${clientName || '＿＿＿＿＿＿＿＿＿＿'}<span class="suffix">（以下簡稱甲方）</span></div>
+      <div class="party-line">${SELLER.name}<span class="suffix">（以下簡稱乙方）</span></div>
     </div>
 
     <div class="intro">${getIntroText(clientName, eventTitle)}</div>
@@ -440,8 +442,8 @@ function render() {
     <ol class="clause-list">
       ${eventProcessList}
     </ol>
-    <div style="font-size:12px;color:#666;margin:-4px 0 10px 20px;">
-      日期：${eventDate ? toRocDate(eventDate) : '＿＿＿＿'}　時間：${eventTime || '＿＿＿＿'}　地點：${eventLocation || '＿＿＿＿'}　人數：${headcount || '＿＿＿＿'}
+    <div class="meta-line" style="font-size:12px;color:#666;margin:-4px 0 10px 20px;">
+      <span>日期：${eventDate ? toRocDate(eventDate) : '＿＿＿＿'}</span><span>時間：${eventTime || '＿＿＿＿'}</span><span>地點：${eventLocation || '＿＿＿＿'}</span><span>人數：${headcount || '＿＿＿＿'}</span>
     </div>
 
     <div class="clause-title">二、費用說明</div>
@@ -496,7 +498,7 @@ function render() {
       </div>
     </div>
 
-    <div class="doc-date">中　華　民　國　${signDateStr}</div>
+    <div class="doc-date">中華民國<span class="suffix">${signDateStr}</span></div>
   `;
 }
 
@@ -508,12 +510,12 @@ function downloadPdf() {
   window.scrollTo(0, 0);
 
   html2pdf().set({
-    margin: 0,
+    margin: [12, 0, 14, 0],
     filename: `FUN星球${docTitle}_${clientName}_${today}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['css', 'legacy'] }
+    pagebreak: { mode: ['css', 'legacy'], avoid: ['li', '.sign-block', '.fee-table'] }
   }).from(el).save();
 }
 
