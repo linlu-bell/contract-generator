@@ -106,6 +106,8 @@
   #doc .fee-table tr.total td { font-weight: 700; color: var(--purple); border-bottom: none; padding-top: 8px; }
   #doc .sign-block { display:flex; justify-content:space-between; margin-top: 30px; padding-top: 18px; border-top: 1px dashed #ccc; font-size: 12px; }
   #doc .sign-block .col { width: 47%; }
+  #doc .sign-block .field-row { display:flex; margin: 2px 0; }
+  #doc .sign-block .field-label { display:inline-block; width: 4.6em; flex-shrink:0; letter-spacing: 2px; }
   #doc .sign-line { margin-top: 40px; border-bottom: 1px solid #999; }
   #doc .doc-date { text-align: center; margin-top: 28px; font-size: 13px; }
 
@@ -476,21 +478,21 @@ function render() {
 
     <div class="sign-block">
       <div class="col">
-        <div>甲　方：（簽章）</div>
+        <div class="field-row"><span class="field-label">甲方</span>：${clientName || '＿＿＿＿＿＿＿＿'}（簽章）</div>
         <div class="sign-line"></div>
-        <div style="margin-top:10px;">統一編號：${clientTaxId || '　'}</div>
-        <div>代　表　人：${clientRep || '　'}</div>
-        <div>地　　　址：${clientAddr || '　'}</div>
-        <div>電　　　話：${clientPhone || '　'}</div>
+        <div class="field-row" style="margin-top:10px;"><span class="field-label">統一編號</span>：${clientTaxId || '　'}</div>
+        <div class="field-row"><span class="field-label">代表人</span>：${clientRep || '　'}</div>
+        <div class="field-row"><span class="field-label">地址</span>：${clientAddr || '　'}</div>
+        <div class="field-row"><span class="field-label">電話</span>：${clientPhone || '　'}</div>
       </div>
       <div class="col">
-        <div>乙　方：${SELLER.name}（簽章）</div>
+        <div class="field-row"><span class="field-label">乙方</span>：${SELLER.name}（簽章）</div>
         <div class="sign-line"></div>
-        <div style="margin-top:10px;">統一編號：${SELLER.taxId}</div>
-        <div>代　表　人：${SELLER.rep}</div>
-        <div>地　　　址：${SELLER.addr}</div>
-        <div>電　　　話：${SELLER.phone}</div>
-        <div style="margin-top:6px;">聯絡人：${funContact.name}</div>
+        <div class="field-row" style="margin-top:10px;"><span class="field-label">統一編號</span>：${SELLER.taxId}</div>
+        <div class="field-row"><span class="field-label">代表人</span>：${SELLER.rep}</div>
+        <div class="field-row"><span class="field-label">地址</span>：${SELLER.addr}</div>
+        <div class="field-row"><span class="field-label">電話</span>：${SELLER.phone}</div>
+        <div class="field-row" style="margin-top:6px;"><span class="field-label">聯絡人</span>：${funContact.name}</div>
       </div>
     </div>
 
