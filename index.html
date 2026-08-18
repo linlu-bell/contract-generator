@@ -72,9 +72,12 @@
   .checkbox-row input[type="checkbox"] { width: auto; margin-top: 2px; }
   .checkbox-row .label-text { font-size: 12px; color: #3a2a52; line-height: 1.5; }
   .checkbox-row .label-text b { color: var(--purple); }
-  .fee-item { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
-  .fee-item input:first-child { flex: 2; }
-  .fee-item input:last-child { flex: 1; }
+  .fee-item {
+    border: 1.5px solid #e6dcf2; border-radius: 8px; padding: 8px; margin-top: 8px; background: var(--cream);
+  }
+  .fee-item .fee-item-row { display: flex; gap: 6px; margin-top: 6px; }
+  .fee-item .fee-item-row input:first-child { flex: 1; }
+  .fee-item .fee-item-row input:last-child { width: 100px; flex-shrink: 0; }
   .btn {
     padding: 8px 14px; border: none; border-radius: 8px; background: var(--purple);
     color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
@@ -158,13 +161,43 @@
     </div>
 
     <h2 class="section-title">費用</h2>
-    <div id="feeItems"></div>
-    <div style="margin-top:6px;">
-      <button class="btn small" onclick="addFeeItem()">+ 新增費用項目</button>
+    <div class="toggle">
+      <div class="opt selected" data-k="feeMode" data-v="simple" onclick="setToggle('feeMode','simple')">只列總金額</div>
+      <div class="opt" data-k="feeMode" data-v="itemized" onclick="setToggle('feeMode','itemized')">列出明細項目</div>
     </div>
-    <label style="margin-top:10px;">交通出勤費（留空或 0 則不顯示）</label>
-    <input type="number" id="transportFee" placeholder="0" oninput="render()">
-    <label>訂金比例</label>
+
+    <div id="simpleFeeBlock" style="margin-top:8px;">
+      <label>服務費用總金額</label>
+      <input type="number" id="simpleFeeAmount" placeholder="0" oninput="render()">
+      <div class="checkbox-row">
+        <input type="checkbox" id="referQuote" checked onchange="render()">
+        <div class="label-text">加註「費用明細詳見附件報價單」</div>
+      </div>
+    </div>
+
+    <div id="itemizedFeeBlock" style="display:none;">
+      <div id="feeItems"></div>
+      <div style="margin-top:6px;">
+        <button class="btn small" onclick="addFeeItem()">+ 新增費用項目</button>
+      </div>
+    </div>
+
+    <label style="margin-top:10px;">交通出勤費</label>
+    <div class="toggle">
+      <div class="opt selected" data-k="transportMode" data-v="none" onclick="setToggle('transportMode','none')">不列</div>
+      <div class="opt" data-k="transportMode" data-v="fixed" onclick="setToggle('transportMode','fixed')">固定金額</div>
+      <div class="opt" data-k="transportMode" data-v="reimburse" onclick="setToggle('transportMode','reimburse')">實報實銷</div>
+    </div>
+    <div id="transportFixedBlock" style="display:none;">
+      <label>金額</label>
+      <input type="number" id="transportFee" placeholder="0" oninput="render()">
+    </div>
+    <div id="transportReimburseBlock" style="display:none;">
+      <label>說明文字</label>
+      <textarea id="transportReimburseDesc" oninput="render()">交通出勤費依實際車資單據實報實銷，另計，於活動完成後併同尾款請款。</textarea>
+    </div>
+
+    <label style="margin-top:10px;">訂金比例</label>
     <input type="number" id="depositPct" value="50" oninput="render()">
     <div class="hint">% ，取消/退款門檻日期會依活動日期自動計算</div>
 
@@ -210,7 +243,7 @@ const SELLER = {
   phone: '0982132674'
 };
 
-let state = { docType: 'contract', actType: 'event' };
+let state = { docType: 'contract', actType: 'event', feeMode: 'simple', transportMode: 'none' };
 let feeItems = [{ uid: 1, name: '', amount: '' }];
 let uidSeed = 2;
 
@@ -220,6 +253,10 @@ function setToggle(key, val) {
     el.classList.toggle('selected', el.dataset.v === val);
   });
   document.getElementById('scaleNoteRow').style.display = (key === 'actType' ? val : state.actType) === 'training' ? 'flex' : 'none';
+  document.getElementById('simpleFeeBlock').style.display = (key === 'feeMode' ? val : state.feeMode) === 'simple' ? 'block' : 'none';
+  document.getElementById('itemizedFeeBlock').style.display = (key === 'feeMode' ? val : state.feeMode) === 'itemized' ? 'block' : 'none';
+  document.getElementById('transportFixedBlock').style.display = (key === 'transportMode' ? val : state.transportMode) === 'fixed' ? 'block' : 'none';
+  document.getElementById('transportReimburseBlock').style.display = (key === 'transportMode' ? val : state.transportMode) === 'reimburse' ? 'block' : 'none';
   render();
 }
 
@@ -243,8 +280,10 @@ function renderFeeItems() {
   document.getElementById('feeItems').innerHTML = feeItems.map(item => `
     <div class="fee-item">
       <input type="text" placeholder="項目名稱（例：講師費）" value="${item.name}" oninput="updateFeeItem(${item.uid},'name',this.value)">
-      <input type="number" placeholder="金額" value="${item.amount}" oninput="updateFeeItem(${item.uid},'amount',this.value)">
-      <button class="btn danger small" onclick="removeFeeItem(${item.uid})">×</button>
+      <div class="fee-item-row">
+        <input type="number" placeholder="金額" value="${item.amount}" oninput="updateFeeItem(${item.uid},'amount',this.value)">
+        <button class="btn danger small" onclick="removeFeeItem(${item.uid})">刪除</button>
+      </div>
     </div>
   `).join('');
 }
@@ -320,14 +359,20 @@ function render() {
   const eventLocation = document.getElementById('eventLocation').value;
   const headcount = document.getElementById('headcount').value;
   const scaleNoteOn = document.getElementById('scaleNote').checked;
+  const simpleFeeAmount = parseFloat(document.getElementById('simpleFeeAmount').value) || 0;
+  const referQuote = document.getElementById('referQuote').checked;
   const transportFee = parseFloat(document.getElementById('transportFee').value) || 0;
+  const transportReimburseDesc = document.getElementById('transportReimburseDesc').value;
   const depositPct = parseFloat(document.getElementById('depositPct').value) || 50;
   const allowRecording = document.getElementById('allowRecording').checked;
   const materialAuth = document.getElementById('materialAuth').checked;
   const funContact = CONTACTS[parseInt(document.getElementById('funContact').value, 10)];
 
-  const feeSubtotal = feeItems.reduce((s,i) => s + (parseFloat(i.amount) || 0), 0);
-  const totalAmount = feeSubtotal + transportFee;
+  const serviceFeeSubtotal = state.feeMode === 'simple'
+    ? simpleFeeAmount
+    : feeItems.reduce((s,i) => s + (parseFloat(i.amount) || 0), 0);
+  const transportInTotal = state.transportMode === 'fixed' ? transportFee : 0;
+  const totalAmount = serviceFeeSubtotal + transportInTotal;
   const deposit = totalAmount * depositPct / 100;
 
   const docTitle = state.docType === 'mou' ? '活動表演合作備忘錄' : '活動表演合約書';
@@ -355,10 +400,17 @@ function render() {
   const eventProcessList = getEventProcessClauses(scaleNoteOn, headcount).map(t => `<li>${t}</li>`).join('');
   const copyrightList = getCopyrightClauses(allowRecording, materialAuth).map(t => `<li>${t}</li>`).join('');
 
-  const feeRows = feeItems.filter(i => i.name || i.amount).map(i => `
-    <tr><td>${i.name || '（項目）'}</td><td style="text-align:right;">${fmt(parseFloat(i.amount)||0)}</td></tr>
-  `).join('');
-  const transportRow = transportFee > 0 ? `<tr><td>交通出勤費用</td><td style="text-align:right;">${fmt(transportFee)}</td></tr>` : '';
+  const feeRows = state.feeMode === 'itemized'
+    ? feeItems.filter(i => i.name || i.amount).map(i => `
+        <tr><td>${i.name || '（項目）'}</td><td style="text-align:right;">${fmt(parseFloat(i.amount)||0)}</td></tr>
+      `).join('')
+    : `<tr><td>服務費用</td><td style="text-align:right;">${fmt(simpleFeeAmount)}</td></tr>`;
+  const referQuoteNote = (state.feeMode === 'simple' && referQuote) ? `<div style="font-size:11.5px;color:#666;margin:-6px 0 8px;">（費用明細詳見附件報價單）</div>` : '';
+  const transportRow = state.transportMode === 'fixed' && transportFee > 0
+    ? `<tr><td>交通出勤費用</td><td style="text-align:right;">${fmt(transportFee)}</td></tr>`
+    : state.transportMode === 'reimburse'
+      ? `<tr><td>交通出勤費用</td><td style="text-align:right;">實報實銷</td></tr>`
+      : '';
 
   const today = new Date();
   const signDateStr = toRocDate(today);
@@ -393,14 +445,16 @@ function render() {
     <div class="clause-title">二、費用說明</div>
     <table class="fee-table">
       ${feeRows}${transportRow}
-      <tr class="total"><td>總金額</td><td style="text-align:right;">${fmt(totalAmount)}</td></tr>
+      <tr class="total"><td>總金額${state.transportMode==='reimburse' ? '（不含交通出勤費，另計）' : ''}</td><td style="text-align:right;">${fmt(totalAmount)}</td></tr>
     </table>
+    ${referQuoteNote}
 
     <div class="clause-title">三、費用支付方式</div>
     <ol class="clause-list">
       <li>雙方簽署本${state.docType==='mou'?'備忘錄':'合約'}當天，甲方應向乙方支付活動總金額的 ${depositPct}%（新台幣 ${fmt(deposit)} 元）作為訂金。</li>
       ${refundHtml}
       <li>甲方需於活動場次全數完成後三個工作天內支付尾款，以匯款或現金支付至乙方指定帳戶。</li>
+      ${state.transportMode === 'reimburse' ? `<li>${transportReimburseDesc}</li>` : ''}
       <li>如有逾期未付款情形，甲方需支付每日活動費用1%的逾期費用，直到全部支付為止。</li>
     </ol>
 
