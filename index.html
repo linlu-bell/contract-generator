@@ -123,6 +123,8 @@
     <h1>📝 合約備忘錄產生器</h1>
     <div class="subtitle">選類型、填資料，右邊自動產出合約／備忘錄全文</div>
 
+    <a href="https://docs.google.com/spreadsheets/d/1cA3tTVsxqpn_IifJwgfLlSQfcO5PR4xaHRMrRnCuC60/edit" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:10px;font-size:12px;color:var(--blue);font-weight:700;text-decoration:none;">📋 查看所有已儲存的文件 →</a>
+
     <h2 class="section-title">文件類型</h2>
     <div class="toggle">
       <div class="opt selected" data-k="docType" data-v="contract" onclick="setToggle('docType','contract')">活動表演合約書</div>
@@ -222,6 +224,9 @@
       <option value="2">黃筱娟（Lulu 姐姐）</option>
     </select>
 
+    <button class="pdf-btn" style="background:var(--blue);" onclick="saveDoc()">💾 儲存這份文件</button>
+    <div id="save-status" style="font-size:11px;color:#666;margin-top:6px;min-height:14px;"></div>
+
     <button class="pdf-btn" onclick="downloadPdf()">📄 下載 PDF</button>
   </div>
 
@@ -250,6 +255,14 @@ const SELLER = {
 let state = { docType: 'contract', actType: 'event', feeMode: 'simple', transportMode: 'none' };
 let feeItems = [{ uid: 1, name: '', amount: '' }];
 let uidSeed = 2;
+
+// 部署好的 Apps Script 網頁應用程式網址，跟報價單產生器共用同一個，用 doc=contract 寫進「合約書」分頁
+const APPS_SCRIPT_LOG_URL = 'https://script.google.com/macros/s/AKfycbxUu1PMOljfa_A53PvHYCKoQSGZYvQtVeH7cO0nOvVQ3ovvqh42-rQ50zf65H8tFdl4/exec';
+
+function genDocUid() {
+  return 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+let docUid = genDocUid();
 
 function setToggle(key, val) {
   state[key] = val;
@@ -519,7 +532,113 @@ function downloadPdf() {
   }).from(el).save();
 }
 
+function getState() {
+  return {
+    state: { ...state },
+    feeItems,
+    clientName: document.getElementById('clientName').value,
+    clientRep: document.getElementById('clientRep').value,
+    clientTaxId: document.getElementById('clientTaxId').value,
+    clientPhone: document.getElementById('clientPhone').value,
+    clientAddr: document.getElementById('clientAddr').value,
+    eventTitle: document.getElementById('eventTitle').value,
+    eventDate: document.getElementById('eventDate').value,
+    eventTime: document.getElementById('eventTime').value,
+    eventLocation: document.getElementById('eventLocation').value,
+    headcount: document.getElementById('headcount').value,
+    scaleNote: document.getElementById('scaleNote').checked,
+    simpleFeeAmount: document.getElementById('simpleFeeAmount').value,
+    referQuote: document.getElementById('referQuote').checked,
+    transportFee: document.getElementById('transportFee').value,
+    transportReimburseDesc: document.getElementById('transportReimburseDesc').value,
+    depositPct: document.getElementById('depositPct').value,
+    allowRecording: document.getElementById('allowRecording').checked,
+    materialAuth: document.getElementById('materialAuth').checked,
+    funContact: document.getElementById('funContact').value
+  };
+}
+
+function applyState(s) {
+  if (!s) return;
+  state = s.state || state;
+  document.querySelectorAll('.toggle .opt').forEach(el => {
+    el.classList.toggle('selected', state[el.dataset.k] === el.dataset.v);
+  });
+  document.getElementById('scaleNoteRow').style.display = state.actType === 'training' ? 'flex' : 'none';
+  document.getElementById('simpleFeeBlock').style.display = state.feeMode === 'simple' ? 'block' : 'none';
+  document.getElementById('itemizedFeeBlock').style.display = state.feeMode === 'itemized' ? 'block' : 'none';
+  document.getElementById('transportFixedBlock').style.display = state.transportMode === 'fixed' ? 'block' : 'none';
+  document.getElementById('transportReimburseBlock').style.display = state.transportMode === 'reimburse' ? 'block' : 'none';
+
+  feeItems = s.feeItems || feeItems;
+  uidSeed = feeItems.reduce((max, i) => Math.max(max, i.uid || 0), 0) + 1;
+
+  document.getElementById('clientName').value = s.clientName || '';
+  document.getElementById('clientRep').value = s.clientRep || '';
+  document.getElementById('clientTaxId').value = s.clientTaxId || '';
+  document.getElementById('clientPhone').value = s.clientPhone || '';
+  document.getElementById('clientAddr').value = s.clientAddr || '';
+  document.getElementById('eventTitle').value = s.eventTitle || '';
+  document.getElementById('eventDate').value = s.eventDate || '';
+  document.getElementById('eventTime').value = s.eventTime || '';
+  document.getElementById('eventLocation').value = s.eventLocation || '';
+  document.getElementById('headcount').value = s.headcount || '';
+  document.getElementById('scaleNote').checked = !!s.scaleNote;
+  document.getElementById('simpleFeeAmount').value = s.simpleFeeAmount || '';
+  document.getElementById('referQuote').checked = s.referQuote !== false;
+  document.getElementById('transportFee').value = s.transportFee || '';
+  document.getElementById('transportReimburseDesc').value = s.transportReimburseDesc || document.getElementById('transportReimburseDesc').value;
+  document.getElementById('depositPct').value = s.depositPct || '50';
+  document.getElementById('allowRecording').checked = !!s.allowRecording;
+  document.getElementById('materialAuth').checked = !!s.materialAuth;
+  document.getElementById('funContact').value = s.funContact || '0';
+
+  renderFeeItems();
+}
+
+function buildEditLink() {
+  const encoded = encodeURIComponent(JSON.stringify(getState()));
+  const baseUrl = location.origin + location.pathname;
+  return `${baseUrl}?uid=${docUid}&data=${encoded}`;
+}
+
+function saveDoc() {
+  const statusEl = document.getElementById('save-status');
+  if (!APPS_SCRIPT_LOG_URL) {
+    statusEl.textContent = '尚未接上記錄表，這個功能還在設定中。';
+    return;
+  }
+  const clientName = document.getElementById('clientName').value || '（未填客戶名稱）';
+  const totalCell = document.getElementById('doc').querySelector('.fee-table tr.total td:last-child');
+  const totalDisplay = totalCell ? totalCell.textContent.trim() : '';
+  const editLink = buildEditLink();
+
+  navigator.clipboard && navigator.clipboard.writeText(editLink).catch(() => {});
+
+  const logUrl = `${APPS_SCRIPT_LOG_URL}?doc=contract&uid=${encodeURIComponent(docUid)}&client=${encodeURIComponent(clientName)}&total=${encodeURIComponent(totalDisplay)}&link=${encodeURIComponent(editLink)}`;
+  fetch(logUrl, { mode: 'no-cors' }).catch(() => {});
+
+  statusEl.textContent = '已儲存！編輯連結已複製到剪貼簿，也記錄進「合約書」記錄表了。';
+}
+
+function loadFromUrl() {
+  const params = new URLSearchParams(location.search);
+  const uid = params.get('uid');
+  const data = params.get('data');
+  if (uid) docUid = uid;
+  if (data) {
+    try {
+      applyState(JSON.parse(data));
+      return true;
+    } catch (e) {
+      console.error('編輯連結資料解析失敗', e);
+    }
+  }
+  return false;
+}
+
 renderFeeItems();
+loadFromUrl();
 render();
 </script>
 </body>
