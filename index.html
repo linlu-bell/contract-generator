@@ -89,7 +89,9 @@
     background: var(--yellow); color: #5a4210; font-size: 14px; font-weight: 800; cursor: pointer;
   }
 
-  #doc { background: #fff; max-width: 900px; margin: 0 auto; padding: 48px 44px; color: #2a2a2a; font-size: 13px; line-height: 1.75; }
+  /* 不用 -apple-system/BlinkMacSystemFont：html2canvas 對這兩個蘋果系統字型的中文字距量測不準，
+     某些字元組合截圖出來會疊字，換成微軟正黑體開頭就正常（報價單產生器同款 bug 同款修法） */
+  #doc { background: #fff; max-width: 900px; margin: 0 auto; padding: 48px 44px; color: #2a2a2a; font-size: 13px; line-height: 1.75; font-family: "Microsoft JhengHei", "PingFang TC", sans-serif; }
   #doc .doc-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 3px solid var(--purple); padding-bottom: 14px; margin-bottom: 20px; }
   #doc .brand-logo { height: 50px; display:block; }
   #doc .brand-sub { font-size: 11px; color: #8a7aa8; margin-top: 2px; }
