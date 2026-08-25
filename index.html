@@ -65,6 +65,8 @@
     border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--purple); cursor: pointer;
   }
   .toggle .opt.selected { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .toggle.multi .opt::before { content: '☐ '; }
+  .toggle.multi .opt.selected::before { content: '☑ '; }
   .checkbox-row {
     display: flex; align-items: flex-start; gap: 8px; margin: 8px 0;
     padding: 8px; background: var(--cream); border: 1.5px solid #e6dcf2; border-radius: 8px;
@@ -102,6 +104,7 @@
   #doc .suffix { margin-left: 0.6em; }
   #doc .intro { margin: 14px 0 20px; }
   #doc .clause-title { font-weight: 700; color: var(--purple); font-size: 14px; margin: 18px 0 8px; page-break-after: avoid; break-after: avoid; }
+  #doc .sub-clause-title { font-weight: 700; color: #3a2a52; font-size: 13px; margin: 12px 0 6px; page-break-after: avoid; break-after: avoid; }
   #doc ol.clause-list { margin: 0; padding-left: 20px; }
   #doc ol.clause-list li { margin-bottom: 8px; page-break-inside: avoid; break-inside: avoid; }
   #doc .fee-table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; font-size: 12.5px; }
@@ -133,11 +136,13 @@
       <div class="opt" data-k="docType" data-v="mou" onclick="setToggle('docType','mou')">合作備忘錄</div>
     </div>
 
-    <label style="margin-top:14px;">合作類型（決定「活動進行」條款內容）</label>
-    <div class="toggle">
-      <div class="opt selected" data-k="actType" data-v="event" onclick="setToggle('actType','event')">外場活動</div>
-      <div class="opt" data-k="actType" data-v="training" onclick="setToggle('actType','training')">培訓課程</div>
+    <label style="margin-top:14px;">合作類型（可複選，決定條款內容）</label>
+    <div class="toggle multi">
+      <div class="opt selected" data-act="event" onclick="toggleActType('event')">演出活動</div>
+      <div class="opt" data-act="training" onclick="toggleActType('training')">培訓課程</div>
+      <div class="opt" data-act="planning" onclick="toggleActType('planning')">企劃專案</div>
     </div>
+    <div class="hint">演出＝出人到現場說故事／演戲；企劃＝在家做好交件（故事編撰、Podcast 製播、插圖等）</div>
 
     <h2 class="section-title">甲方資訊</h2>
     <label>單位名稱</label>
@@ -151,21 +156,38 @@
       <div><label>地址</label><input type="text" id="clientAddr" oninput="render()"></div>
     </div>
 
-    <h2 class="section-title">活動／培訓資訊</h2>
-    <label>活動／培訓名稱</label>
+    <h2 class="section-title">案件資訊</h2>
+    <label>案件／活動名稱</label>
     <input type="text" id="eventTitle" placeholder="例：幼兒園教師說故事能力培訓" oninput="render()">
-    <div class="row2">
-      <div><label>日期</label><input type="date" id="eventDate" onchange="render()"></div>
-      <div><label>時間</label><input type="text" id="eventTime" placeholder="例：上午9:00-12:00" oninput="render()"></div>
-    </div>
-    <label>地點</label>
-    <input type="text" id="eventLocation" oninput="render()">
-    <label>參與人數</label>
-    <input type="text" id="headcount" placeholder="例：約90人" oninput="render()">
 
-    <div class="checkbox-row" id="scaleNoteRow" style="display:none;">
-      <input type="checkbox" id="scaleNote" onchange="render()">
-      <div class="label-text"><b>加入人數規模但書</b>：因人數規模較大，現場示範與個別點評僅能挑選部分學員／參與者進行，其餘由旁觀學習。</div>
+    <div id="scheduleBlock">
+      <label style="margin-top:10px;">場次形式</label>
+      <div class="toggle">
+        <div class="opt selected" data-k="scheduleMode" data-v="single" onclick="setToggle('scheduleMode','single')">單場</div>
+        <div class="opt" data-k="scheduleMode" data-v="multi" onclick="setToggle('scheduleMode','multi')">多場專案</div>
+      </div>
+      <div class="hint">多場專案＝總價收費，各場次日期地點寫在報價單，合約不逐場列出</div>
+
+      <div id="singleScheduleBlock">
+        <div class="row2">
+          <div><label>日期</label><input type="date" id="eventDate" onchange="render()"></div>
+          <div><label>時間</label><input type="text" id="eventTime" placeholder="例：上午9:00-12:00" oninput="render()"></div>
+        </div>
+        <label>地點</label>
+        <input type="text" id="eventLocation" oninput="render()">
+        <label>參與人數</label>
+        <input type="text" id="headcount" placeholder="例：約90人" oninput="render()">
+      </div>
+
+      <div class="checkbox-row" id="scaleNoteRow" style="display:none;">
+        <input type="checkbox" id="scaleNote" onchange="render()">
+        <div class="label-text"><b>加入人數規模但書</b>：因人數規模較大，現場示範與個別點評僅能挑選部分學員／參與者進行，其餘由旁觀學習。</div>
+      </div>
+    </div>
+
+    <div id="planningScopeBlock" style="display:none;">
+      <label style="margin-top:10px;">本案不包含的項目（寫進合約，避免範圍蔓延）</label>
+      <textarea id="planningExclusions" placeholder="例：短影音拆解、教案編寫、插圖繪製、道具實物製作" oninput="render()"></textarea>
     </div>
 
     <h2 class="section-title">費用</h2>
@@ -218,6 +240,10 @@
       <input type="checkbox" id="materialAuth" onchange="render()">
       <div class="label-text"><b>甲方提供素材授權乙方行銷使用</b>：甲方提供現場照片／錄影檔案，授權乙方作為行銷宣傳素材；乙方使用時，畫面涉及人員肖像處會進行馬賽克模糊處理。</div>
     </div>
+    <div class="checkbox-row" id="clientAssetRow" style="display:none;">
+      <input type="checkbox" id="clientAsset" onchange="render()">
+      <div class="label-text"><b>甲方有提供品牌素材／IP</b>（商標、吉祥物、既有角色設定等）：加入「甲方素材所有權不因本案受影響，乙方非經同意不得挪作他用」條款。</div>
+    </div>
 
     <h2 class="section-title">FUN星球聯絡窗口</h2>
     <select id="funContact" onchange="render()">
@@ -254,9 +280,18 @@ const SELLER = {
   phone: '0982132674'
 };
 
-let state = { docType: 'contract', actType: 'event', feeMode: 'simple', transportMode: 'none' };
+let state = { docType: 'contract', actTypes: ['event'], scheduleMode: 'single', feeMode: 'simple', transportMode: 'none' };
 let feeItems = [{ uid: 1, name: '', amount: '' }];
 let uidSeed = 2;
+
+function hasType(t) { return state.actTypes.includes(t); }
+function hasLiveType() { return hasType('event') || hasType('training'); }
+function docWord() { return state.docType === 'mou' ? '備忘錄' : '合約'; }
+function caseWord() { return hasLiveType() ? '本活動' : '本案'; }
+function moneyWord() {
+  return (state.actTypes.length > 1 || hasType('planning')) ? '專案總金額' : '活動總金額';
+}
+const CN_NUM = ['一','二','三','四','五','六','七','八','九','十'];
 
 // 部署好的 Apps Script 網頁應用程式網址，跟報價單產生器共用同一個，用 doc=contract 寫進「合約書」分頁
 const APPS_SCRIPT_LOG_URL = 'https://script.google.com/macros/s/AKfycbxUu1PMOljfa_A53PvHYCKoQSGZYvQtVeH7cO0nOvVQ3ovvqh42-rQ50zf65H8tFdl4/exec';
@@ -271,12 +306,34 @@ function setToggle(key, val) {
   document.querySelectorAll(`.opt[data-k="${key}"]`).forEach(el => {
     el.classList.toggle('selected', el.dataset.v === val);
   });
-  document.getElementById('scaleNoteRow').style.display = (key === 'actType' ? val : state.actType) === 'training' ? 'flex' : 'none';
-  document.getElementById('simpleFeeBlock').style.display = (key === 'feeMode' ? val : state.feeMode) === 'simple' ? 'block' : 'none';
-  document.getElementById('itemizedFeeBlock').style.display = (key === 'feeMode' ? val : state.feeMode) === 'itemized' ? 'block' : 'none';
-  document.getElementById('transportFixedBlock').style.display = (key === 'transportMode' ? val : state.transportMode) === 'fixed' ? 'block' : 'none';
-  document.getElementById('transportReimburseBlock').style.display = (key === 'transportMode' ? val : state.transportMode) === 'reimburse' ? 'block' : 'none';
+  syncFormVisibility();
   render();
+}
+
+function toggleActType(t) {
+  const i = state.actTypes.indexOf(t);
+  if (i === -1) state.actTypes.push(t);
+  else if (state.actTypes.length > 1) state.actTypes.splice(i, 1); // 至少留一個
+  // 依原始順序排好，條款才不會因點選順序而亂序
+  const order = ['event', 'training', 'planning'];
+  state.actTypes.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  syncFormVisibility();
+  render();
+}
+
+function syncFormVisibility() {
+  document.querySelectorAll('.opt[data-act]').forEach(el => {
+    el.classList.toggle('selected', hasType(el.dataset.act));
+  });
+  document.getElementById('scheduleBlock').style.display = hasLiveType() ? 'block' : 'none';
+  document.getElementById('singleScheduleBlock').style.display = state.scheduleMode === 'single' ? 'block' : 'none';
+  document.getElementById('scaleNoteRow').style.display = (hasType('training') && state.scheduleMode === 'single') ? 'flex' : 'none';
+  document.getElementById('planningScopeBlock').style.display = hasType('planning') ? 'block' : 'none';
+  document.getElementById('clientAssetRow').style.display = hasType('planning') ? 'flex' : 'none';
+  document.getElementById('simpleFeeBlock').style.display = state.feeMode === 'simple' ? 'block' : 'none';
+  document.getElementById('itemizedFeeBlock').style.display = state.feeMode === 'itemized' ? 'block' : 'none';
+  document.getElementById('transportFixedBlock').style.display = state.transportMode === 'fixed' ? 'block' : 'none';
+  document.getElementById('transportReimburseBlock').style.display = state.transportMode === 'reimburse' ? 'block' : 'none';
 }
 
 function addFeeItem() {
@@ -320,48 +377,95 @@ function addDays(d, days) {
 }
 
 function getIntroText(clientName, eventTitle) {
-  const cn = clientName || '＿＿＿＿';
   const et = eventTitle || '＿＿＿＿';
-  const actWord = state.actType === 'training' ? '培訓課程' : '說故事活動';
-  const docWord = state.docType === 'mou' ? '本合作備忘錄（以下稱本備忘錄）' : '本合約';
-  return `緣甲方主辦「${et}」，委任乙方進行${actWord}（以下簡稱本活動），為確保本活動順利進行，甲、乙雙方協議訂定條款如下：`;
+  const words = [];
+  if (hasType('event')) words.push('說故事活動');
+  if (hasType('training')) words.push('培訓課程');
+  if (hasType('planning')) words.push('企劃編撰與製作');
+  return `緣甲方主辦「${et}」，委任乙方進行${words.join('、')}（以下簡稱${caseWord()}），為確保${caseWord()}順利進行，甲、乙雙方協議訂定條款如下：`;
 }
 
-function getEventProcessClauses(scaleNoteOn, headcount) {
-  if (state.actType === 'training') {
-    const list = [
-      `培訓日期時間與場地：甲方需於培訓執行日前提供場地資訊，並確保場地具備基本教學設備（投影設備、麥克風、白板等），供乙方評估是否符合本次培訓需求。`,
-      `甲方應於培訓開始前完成學員報到與場地佈置，並提供至少1位工作人員駐守現場，以便突發狀況給予支援。`,
-    ];
-    if (scaleNoteOn) {
-      list.push(`因本次培訓參與人數${headcount ? '達' + headcount : '規模較大'}，現場示範與個別點評僅能挑選部分學員進行，其餘學員由旁觀學習，恕無法逐一照顧每位學員，此點甲方應於招生／宣傳時向學員說明。`);
-    }
-    list.push(`甲方應自行承擔因培訓規劃不良所產生的風險與責任（例如場地設備不足、時間安排衝突、參與人數超出場地容量等問題）。若因規劃不當導致乙方無法順利執行培訓，或其他相關當事人受到損失或損害，甲方需負責賠償所有損失及損害，乙方不需對此承擔任何責任。`);
-    list.push(`若乙方因個人因素導致培訓無法舉行，乙方應在發現無法舉行時，立即通知甲方，並負擔甲方因此遭受的直接損失（包括但不限於預付款項、預訂場地、設備租用費用、廣告宣傳費用等）。若乙方無法履行本${state.docType==='mou'?'備忘錄':'合約'}，亦不得對甲方提出任何索賠或追究責任。`);
-    return list;
-  }
-  const list = [
-    `本活動日期時間與場地：甲方需於活動前一個月提供場地照片或影片供乙方評估。若場地不符合需求（如非密閉空間、擴音設備不足等），雙方需就此協商解決。`,
-    `甲方應提供合適之活動場地，並由乙方自行攜帶故事表演所需之教學擴音設備。召集觀眾、宣傳、主持等事項由甲方負責，活動當日故事人員抵達現場後，負責將故事完整呈現。本活動進行中，甲方應提供至少1位工作人員駐守現場，以便突發狀況給予支援。`,
+function getEventClauses() {
+  const multiSchedule = state.scheduleMode === 'multi';
+  return [
+    multiSchedule
+      ? `本案各場次之日期、時間、地點與參與人數詳見附件報價單。甲方需於各場次執行日前一個月提供場地照片或影片供乙方評估；若場地不符合需求（如非密閉空間、擴音設備不足等），雙方需就此協商解決。`
+      : `本活動日期時間與場地：甲方需於活動前一個月提供場地照片或影片供乙方評估。若場地不符合需求（如非密閉空間、擴音設備不足等），雙方需就此協商解決。`,
+    `甲方應提供合適之活動場地，並由乙方自行攜帶故事表演所需之教學擴音設備。召集觀眾、宣傳、主持等事項由甲方負責，活動當日故事人員抵達現場後，負責將故事完整呈現。活動進行中，甲方應提供至少1位工作人員駐守現場，以便突發狀況給予支援。`,
     `若需乙方故事人員協助進行說故事以外的活動（例如訪談、主持、導覽或融入商品介紹等），甲方應在活動討論階段及乙方報價之前明確提出相關需求。一經報價確定，將不再接受任何增添要求。`,
     `甲方應自行承擔因活動規劃不良所產生的風險與責任（例如場地設置不當、擴音設備不足、活動時間衝突、參加人數超出場地容量等問題）。若因規劃不當導致乙方無法順利執行活動，或其他相關當事人受到損失或損害，甲方需負責賠償所有損失及損害，乙方不需對此承擔任何責任。`,
-    `若乙方因個人因素導致活動無法舉行，乙方應在發現無法舉行時，立即通知甲方，並負擔甲方因此遭受的直接損失（包括但不限於預付款項、預訂場地、設備租用費用、廣告宣傳費用等）。若乙方無法履行本${state.docType==='mou'?'備忘錄':'合約'}，亦不得對甲方提出任何索賠或追究責任。`
+    `若乙方因個人因素導致活動無法舉行，乙方應在發現無法舉行時，立即通知甲方，並負擔甲方因此遭受的直接損失（包括但不限於預付款項、預訂場地、設備租用費用、廣告宣傳費用等）。若乙方無法履行本${docWord()}，亦不得對甲方提出任何索賠或追究責任。`
+  ];
+}
+
+function getTrainingClauses(scaleNoteOn, headcount) {
+  const multiSchedule = state.scheduleMode === 'multi';
+  const list = [
+    multiSchedule
+      ? `本案各場次之日期、時間、地點與參與人數詳見附件報價單。甲方需於各場次執行日前提供場地資訊，並確保場地具備基本教學設備（投影設備、麥克風、白板等），供乙方評估是否符合培訓需求。`
+      : `培訓日期時間與場地：甲方需於培訓執行日前提供場地資訊，並確保場地具備基本教學設備（投影設備、麥克風、白板等），供乙方評估是否符合本次培訓需求。`,
+    `甲方應於培訓開始前完成學員報到與場地佈置，並提供至少1位工作人員駐守現場，以便突發狀況給予支援。`
+  ];
+  if (scaleNoteOn && !multiSchedule) {
+    list.push(`因本次培訓參與人數${headcount ? '達' + headcount : '規模較大'}，現場示範與個別點評僅能挑選部分學員進行，其餘學員由旁觀學習，恕無法逐一照顧每位學員，此點甲方應於招生／宣傳時向學員說明。`);
+  }
+  list.push(`甲方應自行承擔因培訓規劃不良所產生的風險與責任（例如場地設備不足、時間安排衝突、參與人數超出場地容量等問題）。若因規劃不當導致乙方無法順利執行培訓，或其他相關當事人受到損失或損害，甲方需負責賠償所有損失及損害，乙方不需對此承擔任何責任。`);
+  list.push(`若乙方因個人因素導致培訓無法舉行，乙方應在發現無法舉行時，立即通知甲方，並負擔甲方因此遭受的直接損失（包括但不限於預付款項、預訂場地、設備租用費用、廣告宣傳費用等）。若乙方無法履行本${docWord()}，亦不得對甲方提出任何索賠或追究責任。`);
+  return list;
+}
+
+function getPlanningClauses(exclusions) {
+  const list = [
+    `交付內容：乙方應依甲方提供之主題與素材，完成雙方約定之企劃／製作內容（詳見附件報價單），並以約定格式交付甲方。${exclusions ? `本案不包含${exclusions}等項目，如有需求應另行議價。` : `未列於報價單之項目，不包含在本案服務範圍內，如有需求應另行議價。`}`,
+    `工作天計算：本案所涉及之天數均以工作天計算（不含週休二日及國定例假日）。`,
+    `審核與修改：甲方應於收到乙方交付稿件之日起 2 個工作天內完成審核並回覆意見，期間內容修改以 2 次為限；甲方逾期未回覆視為該階段確認通過，乙方並得依甲方所逾天數順延後續交付時程。`,
+    `修改限制：超出約定修改次數，或於確認定案後要求重啟修改（含變更已確認之內容）者，乙方得視修改幅度另行報價，並重新協議交件日期。`,
+    `逾期罰則：若因可歸責乙方之事由，未能依約定進度交付成品，每逾一日扣除該項目費用百分之一為罰金，累計上限為該項目總費用百分之十。`
   ];
   return list;
 }
 
-function getCopyrightClauses(allowRecording, materialAuth) {
-  const actWord = state.actType === 'training' ? '培訓' : '活動';
-  const list = [`乙方因參與本${actWord}所提供之教案、故事道具、教具及乙方人員之肖像權，其智慧財產權與相關權利概歸乙方所有。`];
-  if (allowRecording) {
-    list.push(`本${actWord}如有錄影需求，應事先取得乙方同意。甲方因內部存檔需求所進行之影音紀錄，其著作財產權歸乙方所有，乙方授權甲方僅得於「內部存檔紀錄」範圍內使用，不得公開播放、傳輸或作任何商業用途。`);
-  } else {
-    list.push(`本${actWord}應甲方要求，現場不開放拍照、攝影及錄音。`);
+function getServiceSections(scaleNoteOn, headcount, exclusions) {
+  const sections = [];
+  if (hasType('event')) sections.push({ label: '演出活動', clauses: getEventClauses() });
+  if (hasType('training')) sections.push({ label: '培訓課程', clauses: getTrainingClauses(scaleNoteOn, headcount) });
+  if (hasType('planning')) sections.push({ label: '企劃專案', clauses: getPlanningClauses(exclusions) });
+  return sections;
+}
+
+function getSectionOneTitle() {
+  if (state.actTypes.length > 1) return '服務進行';
+  if (hasType('training')) return '培訓進行';
+  if (hasType('planning')) return '企劃專案執行';
+  return '活動進行';
+}
+
+function getCopyrightClauses(allowRecording, materialAuth, clientAsset) {
+  const actWord = hasLiveType() ? (hasType('training') && !hasType('event') ? '培訓' : '活動') : '案';
+  const list = [];
+
+  if (hasLiveType()) {
+    list.push(`乙方因參與本${actWord}所提供之教案、故事道具、教具及乙方人員之肖像權，其智慧財產權與相關權利概歸乙方所有。`);
+    if (allowRecording) {
+      list.push(`本${actWord}如有錄影需求，應事先取得乙方同意。甲方因內部存檔需求所進行之影音紀錄，其著作財產權歸乙方所有，乙方授權甲方僅得於「內部存檔紀錄」範圍內使用，不得公開播放、傳輸或作任何商業用途。`);
+    } else {
+      list.push(`本${actWord}應甲方要求，現場不開放拍照、攝影及錄音。`);
+    }
+    if (materialAuth) {
+      list.push(`甲方應提供本次${actWord}現場之照片及／或錄影檔案予乙方，授權乙方於後續行銷宣傳素材使用；乙方使用前述素材時，如畫面涉及甲方人員（含學員、教師）肖像，應進行馬賽克模糊處理，以保護個人隱私。`);
+    }
   }
-  if (materialAuth) {
-    list.push(`甲方應提供本次${actWord}現場之照片及／或錄影檔案予乙方，授權乙方於後續行銷宣傳素材使用；乙方使用前述素材時，如畫面涉及甲方人員（含學員、教師）肖像，應進行馬賽克模糊處理，以保護個人隱私。`);
+
+  if (hasType('planning')) {
+    list.push(`著作權歸屬：乙方為履行本${docWord()}所完成之一切創作、作品、著作物，以乙方為著作人，其著作財產權歸屬乙方所有，甲方非經乙方書面同意不得使用、重製或改作。`);
+    list.push(`授權使用範圍：本案完成且甲方付清全額款項後，甲方得於雙方約定之用途與範圍內使用該著作成果；逾越約定範圍之使用（含轉售、再授權第三方或任何直接獲利之商業販售）應另行取得乙方書面同意。甲方延伸運用時，應於明顯處標註「故事原創：FUN星球」或同等字樣，以維護乙方之著作人格權。`);
+    if (clientAsset) {
+      list.push(`甲方素材權利：由甲方揭露或原屬甲方所有之內容（包含品牌商標、吉祥物、既有角色設定等），其所有權不因本${docWord()}而受影響，仍歸甲方所有；非經甲方書面同意，乙方不得擅自使用、散布、公開或挪為他用。`);
+    }
   }
-  list.push(`乙方保證${state.actType==='training'?'授課':'表演'}內容，絕無侵害第三人之權益或違反法令之情事發生，其內容如有用及第三人之著作，並應完整取得授權。`);
+
+  const guaranteeWord = hasType('planning') && !hasLiveType() ? '交付之著作' : (hasType('training') && !hasType('event') ? '授課' : '表演');
+  list.push(`乙方保證${guaranteeWord}內容，絕無侵害第三人之權益或違反法令之情事發生，其內容如有用及第三人之著作，並應完整取得授權。但如發生侵害爭議之內容係依甲方之明確指示完成者，不在此限。`);
   return list;
 }
 
@@ -378,6 +482,7 @@ function render() {
   const eventLocation = document.getElementById('eventLocation').value;
   const headcount = document.getElementById('headcount').value;
   const scaleNoteOn = document.getElementById('scaleNote').checked;
+  const planningExclusions = document.getElementById('planningExclusions').value.trim();
   const simpleFeeAmount = parseFloat(document.getElementById('simpleFeeAmount').value) || 0;
   const referQuote = document.getElementById('referQuote').checked;
   const transportFee = parseFloat(document.getElementById('transportFee').value) || 0;
@@ -385,6 +490,7 @@ function render() {
   const depositPct = parseFloat(document.getElementById('depositPct').value) || 50;
   const allowRecording = document.getElementById('allowRecording').checked;
   const materialAuth = document.getElementById('materialAuth').checked;
+  const clientAsset = document.getElementById('clientAsset').checked;
   const funContact = CONTACTS[parseInt(document.getElementById('funContact').value, 10)];
 
   const serviceFeeSubtotal = state.feeMode === 'simple'
@@ -394,30 +500,58 @@ function render() {
   const totalAmount = serviceFeeSubtotal + transportInTotal;
   const deposit = totalAmount * depositPct / 100;
 
-  const docTitle = state.docType === 'mou' ? '活動表演合作備忘錄' : '活動表演合約書';
+  const liveTitle = state.docType === 'mou' ? '活動表演合作備忘錄' : '活動表演合約書';
+  const generalTitle = state.docType === 'mou' ? '合作備忘錄' : '合作契約書';
+  const docTitle = (hasType('event') && !hasType('planning')) ? liveTitle : generalTitle;
   const partyRole = state.docType === 'mou' ? '立備忘錄人' : '立書人';
 
+  // 取消／退款：只有現場類（演出／培訓）才有活動日可算；單場才代入具體日期
   let refundHtml = '';
-  if (eventDate) {
-    const d28 = addDays(eventDate, -28);
-    const d27 = addDays(eventDate, -27);
-    const d22 = addDays(eventDate, -22);
-    const d21 = addDays(eventDate, -21);
-    refundHtml = `
-      <li>若因可歸責甲方之事由，於活動日 ${toRocDate(d28)}（含）以前告知取消，可退還活動總金額之 20%。</li>
-      <li>若於活動日 ${toRocDate(d27)} 至 ${toRocDate(d22)}（含）期間告知取消，訂金不予退還，但可保留延後使用，最多保留半年（需於「新」日期至少前30日預約，否則無法保留檔期）。</li>
-      <li>若於活動日 ${toRocDate(d21)} 至活動當日期間告知取消，訂金不予退還，且不得延後使用。</li>
-    `;
-  } else {
-    refundHtml = `
-      <li>若因可歸責甲方之事由，於活動日28日前（含）告知取消，可退還活動總金額之 20%。</li>
-      <li>若於活動日前27～22日（含）期間告知取消，訂金不予退還，但可保留延後使用，最多保留半年（需提前30日預約新日期）。</li>
-      <li>若於活動日前21日至活動當日期間告知取消，訂金不予退還，且不得延後使用。</li>
-    `;
+  if (hasLiveType()) {
+    if (eventDate && state.scheduleMode === 'single') {
+      const d28 = addDays(eventDate, -28);
+      const d27 = addDays(eventDate, -27);
+      const d22 = addDays(eventDate, -22);
+      const d21 = addDays(eventDate, -21);
+      refundHtml = `
+        <li>若因可歸責甲方之事由，於活動日 ${toRocDate(d28)}（含）以前告知取消，可退還活動總金額之 20%。</li>
+        <li>若於活動日 ${toRocDate(d27)} 至 ${toRocDate(d22)}（含）期間告知取消，訂金不予退還，但可保留延後使用，最多保留半年（需於「新」日期至少前30日預約，否則無法保留檔期）。</li>
+        <li>若於活動日 ${toRocDate(d21)} 至活動當日期間告知取消，訂金不予退還，且不得延後使用。</li>
+      `;
+    } else {
+      refundHtml = `
+        <li>若因可歸責甲方之事由，於各該場次活動日28日前（含）告知取消，可退還該場次費用之 20%。</li>
+        <li>若於該場次活動日前27～22日（含）期間告知取消，該場次費用不予退還，但可保留延後使用，最多保留半年（需提前30日預約新日期）。</li>
+        <li>若於該場次活動日前21日至活動當日期間告知取消，該場次費用不予退還，且不得延後使用。</li>
+      `;
+    }
   }
 
-  const eventProcessList = getEventProcessClauses(scaleNoteOn, headcount).map(t => `<li>${t}</li>`).join('');
-  const copyrightList = getCopyrightClauses(allowRecording, materialAuth).map(t => `<li>${t}</li>`).join('');
+  // 企劃專案：中途終止依實際進度結算
+  const planningTerminateHtml = hasType('planning') ? `
+    <li>若因非可歸責乙方之事由中途終止合作，依乙方已完成之進度結算：已交付初稿或腳本階段，依該項目費用之 50% 計算；已完成初版製作尚未交付審閱階段，依 70% 計算；已交付審閱成品階段，依 80% 計算；成品已正式交付或上架者，視同全案執行完畢，應支付 100%。甲方已支付款項多退少補，且本案著作權歸屬不因中途終止而改變。</li>
+  ` : '';
+
+  const serviceSections = getServiceSections(scaleNoteOn, headcount, planningExclusions);
+  const isMultiSection = serviceSections.length > 1;
+  const serviceSectionsHtml = isMultiSection
+    ? serviceSections.map((s, i) => `
+        <div class="sub-clause-title">（${CN_NUM[i]}）${s.label}</div>
+        <ol class="clause-list">${s.clauses.map(c => `<li>${c}</li>`).join('')}</ol>
+      `).join('')
+    : `<ol class="clause-list">${serviceSections[0].clauses.map(c => `<li>${c}</li>`).join('')}</ol>`;
+
+  const copyrightList = getCopyrightClauses(allowRecording, materialAuth, clientAsset).map(t => `<li>${t}</li>`).join('');
+
+  // 多場模式下條款本文已載明「詳見報價單」，不再重複一行
+  const metaLineHtml = (!hasLiveType() || state.scheduleMode === 'multi') ? ''
+    : `<div class="meta-line" style="font-size:12px;color:#666;margin:-4px 0 10px 20px;">
+        <span>日期：${eventDate ? toRocDate(eventDate) : '＿＿＿＿'}</span><span>時間：${eventTime || '＿＿＿＿'}</span><span>地點：${eventLocation || '＿＿＿＿'}</span><span>人數：${headcount || '＿＿＿＿'}</span>
+      </div>`;
+
+  const finalPaymentHtml = hasLiveType()
+    ? `<li>甲方需於活動場次全數完成後三個工作天內支付尾款，以匯款或現金支付至乙方指定帳戶。</li>`
+    : `<li>甲方需於乙方交付完成品後七個工作天內支付尾款，以匯款或現金支付至乙方指定帳戶。</li>`;
 
   const feeRows = state.feeMode === 'itemized'
     ? feeItems.filter(i => i.name || i.amount).map(i => `
@@ -453,13 +587,9 @@ function render() {
 
     <div class="intro">${getIntroText(clientName, eventTitle)}</div>
 
-    <div class="clause-title">一、${state.actType === 'training' ? '培訓' : '活動'}進行</div>
-    <ol class="clause-list">
-      ${eventProcessList}
-    </ol>
-    <div class="meta-line" style="font-size:12px;color:#666;margin:-4px 0 10px 20px;">
-      <span>日期：${eventDate ? toRocDate(eventDate) : '＿＿＿＿'}</span><span>時間：${eventTime || '＿＿＿＿'}</span><span>地點：${eventLocation || '＿＿＿＿'}</span><span>人數：${headcount || '＿＿＿＿'}</span>
-    </div>
+    <div class="clause-title">一、${getSectionOneTitle()}</div>
+    ${serviceSectionsHtml}
+    ${metaLineHtml}
 
     <div class="clause-title">二、費用說明</div>
     <table class="fee-table">
@@ -470,11 +600,12 @@ function render() {
 
     <div class="clause-title">三、費用支付方式</div>
     <ol class="clause-list">
-      <li>雙方簽署本${state.docType==='mou'?'備忘錄':'合約'}當天，甲方應向乙方支付活動總金額的 ${depositPct}%（新台幣 ${fmt(deposit)} 元）作為訂金。</li>
+      <li>雙方簽署本${docWord()}當天，甲方應向乙方支付${moneyWord()}的 ${depositPct}%（新台幣 ${fmt(deposit)} 元）作為訂金。</li>
       ${refundHtml}
-      <li>甲方需於活動場次全數完成後三個工作天內支付尾款，以匯款或現金支付至乙方指定帳戶。</li>
+      ${planningTerminateHtml}
+      ${finalPaymentHtml}
       ${state.transportMode === 'reimburse' ? `<li>${transportReimburseDesc}</li>` : ''}
-      <li>如有逾期未付款情形，甲方需支付每日活動費用1%的逾期費用，直到全部支付為止。</li>
+      <li>如有逾期未付款情形，每逾一日甲方應按${moneyWord()}之 1% 計付逾期費用，直到全部支付為止。</li>
     </ol>
 
     <div class="clause-title">四、著作權</div>
@@ -484,13 +615,14 @@ function render() {
 
     <div class="clause-title">五、違約</div>
     <ol class="clause-list">
-      <li>任一方如有違約之情事發生，他方得向違約方請求活動總金額之20%做為損害賠償（包括但不限於訴訟費及律師費用），並得終止或解除本${state.docType==='mou'?'備忘錄':'合約'}關係。</li>
+      <li>任一方如有違約之情事發生，他方得向違約方請求${moneyWord()}之20%做為損害賠償（包括但不限於訴訟費及律師費用），並得終止或解除本${docWord()}關係。</li>
     </ol>
 
     <div class="clause-title">六、附則</div>
     <ol class="clause-list">
       <li>本${state.docType==='mou'?'備忘錄':'合約書'}之解釋及其他未盡事宜，悉依中華民國現行相關法令辦理。</li>
-      <li>因本${state.docType==='mou'?'備忘錄':'合約'}滋生爭議時，雙方同意先經友好協商解決；如無法協商解決而涉訟時，雙方同意以台灣高雄地方法院為第一審管轄法院。</li>
+      <li>因本${docWord()}滋生爭議時，雙方同意先經友好協商解決；如無法協商解決而涉訟時，雙方同意以台灣高雄地方法院為第一審管轄法院。</li>
+      <li>本${state.docType==='mou'?'備忘錄':'合約書'}正本壹式貳份，甲乙雙方各執存壹份為憑。</li>
     </ol>
 
     <div class="sign-block">
@@ -549,6 +681,8 @@ function getState() {
     eventLocation: document.getElementById('eventLocation').value,
     headcount: document.getElementById('headcount').value,
     scaleNote: document.getElementById('scaleNote').checked,
+    planningExclusions: document.getElementById('planningExclusions').value,
+    clientAsset: document.getElementById('clientAsset').checked,
     simpleFeeAmount: document.getElementById('simpleFeeAmount').value,
     referQuote: document.getElementById('referQuote').checked,
     transportFee: document.getElementById('transportFee').value,
@@ -563,14 +697,14 @@ function getState() {
 function applyState(s) {
   if (!s) return;
   state = s.state || state;
-  document.querySelectorAll('.toggle .opt').forEach(el => {
+  // 舊版編輯連結相容：actType（單選字串）→ actTypes（複選陣列）
+  if (!state.actTypes) state.actTypes = [state.actType || 'event'];
+  if (!state.scheduleMode) state.scheduleMode = 'single';
+  delete state.actType;
+
+  document.querySelectorAll('.opt[data-k]').forEach(el => {
     el.classList.toggle('selected', state[el.dataset.k] === el.dataset.v);
   });
-  document.getElementById('scaleNoteRow').style.display = state.actType === 'training' ? 'flex' : 'none';
-  document.getElementById('simpleFeeBlock').style.display = state.feeMode === 'simple' ? 'block' : 'none';
-  document.getElementById('itemizedFeeBlock').style.display = state.feeMode === 'itemized' ? 'block' : 'none';
-  document.getElementById('transportFixedBlock').style.display = state.transportMode === 'fixed' ? 'block' : 'none';
-  document.getElementById('transportReimburseBlock').style.display = state.transportMode === 'reimburse' ? 'block' : 'none';
 
   feeItems = s.feeItems || feeItems;
   uidSeed = feeItems.reduce((max, i) => Math.max(max, i.uid || 0), 0) + 1;
@@ -586,6 +720,8 @@ function applyState(s) {
   document.getElementById('eventLocation').value = s.eventLocation || '';
   document.getElementById('headcount').value = s.headcount || '';
   document.getElementById('scaleNote').checked = !!s.scaleNote;
+  document.getElementById('planningExclusions').value = s.planningExclusions || '';
+  document.getElementById('clientAsset').checked = !!s.clientAsset;
   document.getElementById('simpleFeeAmount').value = s.simpleFeeAmount || '';
   document.getElementById('referQuote').checked = s.referQuote !== false;
   document.getElementById('transportFee').value = s.transportFee || '';
@@ -596,6 +732,7 @@ function applyState(s) {
   document.getElementById('funContact').value = s.funContact || '0';
 
   renderFeeItems();
+  syncFormVisibility();
 }
 
 function buildEditLink() {
@@ -641,6 +778,7 @@ function loadFromUrl() {
 
 renderFeeItems();
 loadFromUrl();
+syncFormVisibility();
 render();
 </script>
 </body>
