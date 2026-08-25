@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FUN星球 合約備忘錄產生器</title>
+<title>FUN星球 合約產生器</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root {
@@ -97,8 +97,8 @@
   #doc .doc-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 3px solid var(--purple); padding-bottom: 14px; margin-bottom: 20px; }
   #doc .brand-logo { height: 50px; display:block; }
   #doc .brand-sub { font-size: 11px; color: #8a7aa8; margin-top: 2px; }
-  #doc .doc-title { font-size: 20px; font-weight: 800; color: #2a2a2a; text-align:right; }
-  #doc h3 { text-align: center; font-size: 17px; color: var(--purple); margin: 0 0 22px; }
+  #doc .doc-title { font-size: 13px; font-weight: 700; color: #8a7aa8; text-align:right; max-width: 45%; line-height: 1.5; }
+  #doc h3 { text-align: center; font-size: 24px; font-weight: 800; letter-spacing: 4px; color: var(--purple); margin: 6px 0 24px; }
   #doc .party-block { font-size: 13px; margin-bottom: 16px; }
   #doc .party-block .party-line { margin: 4px 0; }
   #doc .suffix { margin-left: 0.6em; }
@@ -125,18 +125,12 @@
 <div class="app">
 
   <div class="panel form-panel">
-    <h1>📝 合約備忘錄產生器</h1>
-    <div class="subtitle">選類型、填資料，右邊自動產出合約／備忘錄全文</div>
+    <h1>📝 合約產生器</h1>
+    <div class="subtitle">選類型、填資料，右邊自動產出合作契約書全文</div>
 
     <a href="https://docs.google.com/spreadsheets/d/1cA3tTVsxqpn_IifJwgfLlSQfcO5PR4xaHRMrRnCuC60/edit" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:10px;font-size:12px;color:var(--blue);font-weight:700;text-decoration:none;">📋 查看所有已儲存的文件 →</a>
 
-    <h2 class="section-title">文件類型</h2>
-    <div class="toggle">
-      <div class="opt selected" data-k="docType" data-v="contract" onclick="setToggle('docType','contract')">活動表演合約書</div>
-      <div class="opt" data-k="docType" data-v="mou" onclick="setToggle('docType','mou')">合作備忘錄</div>
-    </div>
-
-    <label style="margin-top:14px;">合作類型（可複選，決定條款內容）</label>
+    <h2 class="section-title">合作類型（可複選，決定條款內容）</h2>
     <div class="toggle multi">
       <div class="opt selected" data-act="event" onclick="toggleActType('event')">演出活動</div>
       <div class="opt" data-act="training" onclick="toggleActType('training')">培訓課程</div>
@@ -157,8 +151,10 @@
     </div>
 
     <h2 class="section-title">案件資訊</h2>
-    <label>案件／活動名稱</label>
+    <label>案件／活動名稱（寫進合約本文）</label>
     <input type="text" id="eventTitle" placeholder="例：幼兒園教師說故事能力培訓" oninput="render()">
+    <label>右上角辨識標籤（自己人快速認出這份是哪一案，留空則沿用上面的名稱）</label>
+    <input type="text" id="docTag" placeholder="例：吉的堡培訓專案" oninput="render()">
 
     <div id="scheduleBlock">
       <label style="margin-top:10px;">場次形式</label>
@@ -280,13 +276,14 @@ const SELLER = {
   phone: '0982132674'
 };
 
-let state = { docType: 'contract', actTypes: ['event'], scheduleMode: 'single', feeMode: 'simple', transportMode: 'none' };
+let state = { actTypes: ['event'], scheduleMode: 'single', feeMode: 'simple', transportMode: 'none' };
+const DOC_TITLE = '合作契約書';
 let feeItems = [{ uid: 1, name: '', amount: '' }];
 let uidSeed = 2;
 
 function hasType(t) { return state.actTypes.includes(t); }
 function hasLiveType() { return hasType('event') || hasType('training'); }
-function docWord() { return state.docType === 'mou' ? '備忘錄' : '合約'; }
+function docWord() { return '合約'; }
 function caseWord() { return hasLiveType() ? '本活動' : '本案'; }
 function moneyWord() {
   return (state.actTypes.length > 1 || hasType('planning')) ? '專案總金額' : '活動總金額';
@@ -500,10 +497,8 @@ function render() {
   const totalAmount = serviceFeeSubtotal + transportInTotal;
   const deposit = totalAmount * depositPct / 100;
 
-  const liveTitle = state.docType === 'mou' ? '活動表演合作備忘錄' : '活動表演合約書';
-  const generalTitle = state.docType === 'mou' ? '合作備忘錄' : '合作契約書';
-  const docTitle = (hasType('event') && !hasType('planning')) ? liveTitle : generalTitle;
-  const partyRole = state.docType === 'mou' ? '立備忘錄人' : '立書人';
+  const docTag = document.getElementById('docTag').value.trim() || eventTitle;
+  const partyRole = '立合約書人';
 
   // 取消／退款：只有現場類（演出／培訓）才有活動日可算；單場才代入具體日期
   let refundHtml = '';
@@ -574,10 +569,10 @@ function render() {
         <img src="logo.png" alt="FUN星球" class="brand-logo">
         <div class="brand-sub">${SELLER.name}｜統編 ${SELLER.taxId}</div>
       </div>
-      <div class="doc-title">${docTitle}</div>
+      <div class="doc-title">${docTag || ''}</div>
     </div>
 
-    <h3>${docTitle}</h3>
+    <h3>${DOC_TITLE}</h3>
 
     <div class="party-block">
       <div class="party-line">${partyRole}：</div>
@@ -620,9 +615,9 @@ function render() {
 
     <div class="clause-title">六、附則</div>
     <ol class="clause-list">
-      <li>本${state.docType==='mou'?'備忘錄':'合約書'}之解釋及其他未盡事宜，悉依中華民國現行相關法令辦理。</li>
+      <li>本合約書之解釋及其他未盡事宜，悉依中華民國現行相關法令辦理。</li>
       <li>因本${docWord()}滋生爭議時，雙方同意先經友好協商解決；如無法協商解決而涉訟時，雙方同意以台灣高雄地方法院為第一審管轄法院。</li>
-      <li>本${state.docType==='mou'?'備忘錄':'合約書'}正本壹式貳份，甲乙雙方各執存壹份為憑。</li>
+      <li>本合約書正本壹式貳份，甲乙雙方各執存壹份為憑。</li>
     </ol>
 
     <div class="sign-block">
@@ -652,13 +647,13 @@ function render() {
 function downloadPdf() {
   const el = document.getElementById('doc');
   const clientName = document.getElementById('clientName').value || '客戶';
-  const docTitle = state.docType === 'mou' ? '合作備忘錄' : '合約書';
+  const tag = document.getElementById('docTag').value.trim() || document.getElementById('eventTitle').value.trim();
   const today = new Date().toISOString().slice(0,10);
   window.scrollTo(0, 0);
 
   html2pdf().set({
     margin: [12, 0, 14, 0],
-    filename: `FUN星球${docTitle}_${clientName}_${today}.pdf`,
+    filename: `FUN星球合作契約書_${clientName}${tag ? '_' + tag : ''}_${today}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -676,6 +671,7 @@ function getState() {
     clientPhone: document.getElementById('clientPhone').value,
     clientAddr: document.getElementById('clientAddr').value,
     eventTitle: document.getElementById('eventTitle').value,
+    docTag: document.getElementById('docTag').value,
     eventDate: document.getElementById('eventDate').value,
     eventTime: document.getElementById('eventTime').value,
     eventLocation: document.getElementById('eventLocation').value,
@@ -701,6 +697,7 @@ function applyState(s) {
   if (!state.actTypes) state.actTypes = [state.actType || 'event'];
   if (!state.scheduleMode) state.scheduleMode = 'single';
   delete state.actType;
+  delete state.docType; // 文件類型已統一為「合作契約書」，不再區分合約／備忘錄
 
   document.querySelectorAll('.opt[data-k]').forEach(el => {
     el.classList.toggle('selected', state[el.dataset.k] === el.dataset.v);
@@ -715,6 +712,7 @@ function applyState(s) {
   document.getElementById('clientPhone').value = s.clientPhone || '';
   document.getElementById('clientAddr').value = s.clientAddr || '';
   document.getElementById('eventTitle').value = s.eventTitle || '';
+  document.getElementById('docTag').value = s.docTag || '';
   document.getElementById('eventDate').value = s.eventDate || '';
   document.getElementById('eventTime').value = s.eventTime || '';
   document.getElementById('eventLocation').value = s.eventLocation || '';
