@@ -115,7 +115,7 @@
   #doc .sign-block .col { width: 47%; }
   #doc .sign-block .field-row { display:flex; margin: 2px 0; }
   #doc .sign-block .field-label { display:inline-block; width: 5.6em; flex-shrink:0; white-space: nowrap; }
-  #doc .sign-line { margin-top: 40px; border-bottom: 1px solid #999; }
+  #doc .sign-space { height: 92px; }
   #doc .doc-date { text-align: center; margin-top: 28px; font-size: 13px; }
 
   @media print { body { background: #fff; } .form-panel, .pdf-btn { display:none; } .app { padding:0; } }
@@ -146,9 +146,11 @@
       <div><label>統一編號（選填）</label><input type="text" id="clientTaxId" oninput="render()"></div>
     </div>
     <div class="row2">
+      <div><label>聯絡人</label><input type="text" id="clientContact" oninput="render()"></div>
       <div><label>聯絡電話</label><input type="text" id="clientPhone" oninput="render()"></div>
-      <div><label>地址</label><input type="text" id="clientAddr" oninput="render()"></div>
     </div>
+    <label>地址</label>
+    <input type="text" id="clientAddr" oninput="render()">
 
     <h2 class="section-title">案件資訊</h2>
     <label>案件／活動名稱（寫進合約本文）</label>
@@ -470,6 +472,7 @@ function render() {
   const clientName = document.getElementById('clientName').value;
   const clientRep = document.getElementById('clientRep').value;
   const clientTaxId = document.getElementById('clientTaxId').value;
+  const clientContact = document.getElementById('clientContact').value;
   const clientPhone = document.getElementById('clientPhone').value;
   const clientAddr = document.getElementById('clientAddr').value;
   const eventTitle = document.getElementById('eventTitle').value;
@@ -623,20 +626,21 @@ function render() {
     <div class="sign-block">
       <div class="col">
         <div class="field-row"><span class="field-label">甲方</span>：${clientName || '＿＿＿＿＿＿＿＿'}（簽章）</div>
-        <div class="sign-line"></div>
-        <div class="field-row" style="margin-top:10px;"><span class="field-label">統一編號</span>：${clientTaxId || '　'}</div>
+        <div class="sign-space"></div>
+        <div class="field-row"><span class="field-label">統一編號</span>：${clientTaxId || '　'}</div>
         <div class="field-row"><span class="field-label">代表人</span>：${clientRep || '　'}</div>
+        <div class="field-row"><span class="field-label">聯絡人</span>：${clientContact || '　'}</div>
         <div class="field-row"><span class="field-label">地址</span>：${clientAddr || '　'}</div>
         <div class="field-row"><span class="field-label">電話</span>：${clientPhone || '　'}</div>
       </div>
       <div class="col">
         <div class="field-row"><span class="field-label">乙方</span>：${SELLER.name}（簽章）</div>
-        <div class="sign-line"></div>
-        <div class="field-row" style="margin-top:10px;"><span class="field-label">統一編號</span>：${SELLER.taxId}</div>
+        <div class="sign-space"></div>
+        <div class="field-row"><span class="field-label">統一編號</span>：${SELLER.taxId}</div>
         <div class="field-row"><span class="field-label">代表人</span>：${SELLER.rep}</div>
+        <div class="field-row"><span class="field-label">聯絡人</span>：${funContact.name}</div>
         <div class="field-row"><span class="field-label">地址</span>：${SELLER.addr}</div>
         <div class="field-row"><span class="field-label">電話</span>：${SELLER.phone}</div>
-        <div class="field-row" style="margin-top:6px;"><span class="field-label">聯絡人</span>：${funContact.name}</div>
       </div>
     </div>
 
@@ -668,6 +672,7 @@ function getState() {
     clientName: document.getElementById('clientName').value,
     clientRep: document.getElementById('clientRep').value,
     clientTaxId: document.getElementById('clientTaxId').value,
+    clientContact: document.getElementById('clientContact').value,
     clientPhone: document.getElementById('clientPhone').value,
     clientAddr: document.getElementById('clientAddr').value,
     eventTitle: document.getElementById('eventTitle').value,
@@ -709,6 +714,7 @@ function applyState(s) {
   document.getElementById('clientName').value = s.clientName || '';
   document.getElementById('clientRep').value = s.clientRep || '';
   document.getElementById('clientTaxId').value = s.clientTaxId || '';
+  document.getElementById('clientContact').value = s.clientContact || '';
   document.getElementById('clientPhone').value = s.clientPhone || '';
   document.getElementById('clientAddr').value = s.clientAddr || '';
   document.getElementById('eventTitle').value = s.eventTitle || '';
