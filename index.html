@@ -229,10 +229,24 @@
     <input type="number" id="depositPct" value="50" oninput="render()">
     <div class="hint">% ，取消/退款門檻日期會依活動日期自動計算</div>
 
+    <label>訂金支付時點</label>
+    <input type="text" id="depositTiming" value="雙方簽署本合約當天" oninput="render()">
+    <div class="hint">大企業有請款流程時改成「雙方簽署本合約後 ○ 個工作天內」</div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="latePenalty" checked onchange="render()">
+      <div class="label-text"><b>加入逾期未付款罰則</b>：每逾一日按總金額 1% 計付。企業法務常要求刪除，取消勾選即可拿掉。</div>
+    </div>
+
     <h2 class="section-title">影音／素材條款</h2>
     <div class="checkbox-row">
-      <input type="checkbox" id="allowRecording" onchange="render()">
-      <div class="label-text"><b>甲方可全程錄影僅供內部存檔</b>：不得公開播放、傳輸或做商業用途。</div>
+      <input type="checkbox" id="allowRecording" onchange="syncFormVisibility(); render();">
+      <div class="label-text"><b>甲方可全程錄影</b>：著作財產權仍歸乙方，甲方限內部使用，不得對外公開或商業販售。</div>
+    </div>
+    <div id="recordingUseBlock" style="display:none;">
+      <label>錄影用途（寫進合約的授權範圍）</label>
+      <input type="text" id="recordingUse" value="內部存檔紀錄" oninput="render()">
+      <div class="hint">例：內部存檔紀錄／內部培訓檔案建置使用</div>
     </div>
     <div class="checkbox-row">
       <input type="checkbox" id="materialAuth" onchange="render()">
@@ -328,6 +342,7 @@ function syncFormVisibility() {
   document.getElementById('singleScheduleBlock').style.display = state.scheduleMode === 'single' ? 'block' : 'none';
   document.getElementById('scaleNoteRow').style.display = (hasType('training') && state.scheduleMode === 'single') ? 'flex' : 'none';
   document.getElementById('planningScopeBlock').style.display = hasType('planning') ? 'block' : 'none';
+  document.getElementById('recordingUseBlock').style.display = document.getElementById('allowRecording').checked ? 'block' : 'none';
   document.getElementById('clientAssetRow').style.display = hasType('planning') ? 'flex' : 'none';
   document.getElementById('simpleFeeBlock').style.display = state.feeMode === 'simple' ? 'block' : 'none';
   document.getElementById('itemizedFeeBlock').style.display = state.feeMode === 'itemized' ? 'block' : 'none';
@@ -439,14 +454,14 @@ function getSectionOneTitle() {
   return '活動進行';
 }
 
-function getCopyrightClauses(allowRecording, materialAuth, clientAsset) {
+function getCopyrightClauses(allowRecording, materialAuth, clientAsset, recordingUse) {
   const actWord = hasLiveType() ? (hasType('training') && !hasType('event') ? '培訓' : '活動') : '案';
   const list = [];
 
   if (hasLiveType()) {
     list.push(`乙方因參與本${actWord}所提供之教案、故事道具、教具及乙方人員之肖像權，其智慧財產權與相關權利概歸乙方所有。`);
     if (allowRecording) {
-      list.push(`本${actWord}如有錄影需求，應事先取得乙方同意。甲方因內部存檔需求所進行之影音紀錄，其著作財產權歸乙方所有，乙方授權甲方僅得於「內部存檔紀錄」範圍內使用，不得公開播放、傳輸或作任何商業用途。`);
+      list.push(`本${actWord}如有錄影需求，應事先取得乙方同意。甲方所進行之影音紀錄，其著作財產權歸乙方所有，乙方授權甲方僅得於「${recordingUse || '內部存檔紀錄'}」範圍內使用，限甲方內部教育訓練使用，不得對外公開播放、傳輸，或作為商業販售、再授權第三方。`);
     } else {
       list.push(`本${actWord}應甲方要求，現場不開放拍照、攝影及錄音。`);
     }
@@ -491,6 +506,9 @@ function render() {
   const allowRecording = document.getElementById('allowRecording').checked;
   const materialAuth = document.getElementById('materialAuth').checked;
   const clientAsset = document.getElementById('clientAsset').checked;
+  const recordingUse = document.getElementById('recordingUse').value.trim();
+  const depositTiming = document.getElementById('depositTiming').value.trim() || '雙方簽署本合約當天';
+  const latePenalty = document.getElementById('latePenalty').checked;
   const funContact = CONTACTS[parseInt(document.getElementById('funContact').value, 10)];
 
   const serviceFeeSubtotal = state.feeMode === 'simple'
@@ -539,7 +557,7 @@ function render() {
       `).join('')
     : `<ol class="clause-list">${serviceSections[0].clauses.map(c => `<li>${c}</li>`).join('')}</ol>`;
 
-  const copyrightList = getCopyrightClauses(allowRecording, materialAuth, clientAsset).map(t => `<li>${t}</li>`).join('');
+  const copyrightList = getCopyrightClauses(allowRecording, materialAuth, clientAsset, recordingUse).map(t => `<li>${t}</li>`).join('');
 
   // 多場模式下條款本文已載明「詳見報價單」，不再重複一行
   const metaLineHtml = (!hasLiveType() || state.scheduleMode === 'multi') ? ''
@@ -598,12 +616,12 @@ function render() {
 
     <div class="clause-title">三、費用支付方式</div>
     <ol class="clause-list">
-      <li>雙方簽署本${docWord()}當天，甲方應向乙方支付${moneyWord()}的 ${depositPct}%（新台幣 ${fmt(deposit)} 元）作為訂金。</li>
+      <li>${depositTiming}，甲方應向乙方支付${moneyWord()}的 ${depositPct}%（新台幣 ${fmt(deposit)} 元）作為訂金。</li>
       ${refundHtml}
       ${planningTerminateHtml}
       ${finalPaymentHtml}
       ${state.transportMode === 'reimburse' ? `<li>${transportReimburseDesc}</li>` : ''}
-      <li>如有逾期未付款情形，每逾一日甲方應按${moneyWord()}之 1% 計付逾期費用，直到全部支付為止。</li>
+      ${latePenalty ? `<li>如有逾期未付款情形，每逾一日甲方應按${moneyWord()}之 1% 計付逾期費用，直到全部支付為止。</li>` : ''}
     </ol>
 
     <div class="clause-title">四、著作權</div>
@@ -689,6 +707,9 @@ function getState() {
     transportFee: document.getElementById('transportFee').value,
     transportReimburseDesc: document.getElementById('transportReimburseDesc').value,
     depositPct: document.getElementById('depositPct').value,
+    depositTiming: document.getElementById('depositTiming').value,
+    latePenalty: document.getElementById('latePenalty').checked,
+    recordingUse: document.getElementById('recordingUse').value,
     allowRecording: document.getElementById('allowRecording').checked,
     materialAuth: document.getElementById('materialAuth').checked,
     funContact: document.getElementById('funContact').value
@@ -731,6 +752,9 @@ function applyState(s) {
   document.getElementById('transportFee').value = s.transportFee || '';
   document.getElementById('transportReimburseDesc').value = s.transportReimburseDesc || document.getElementById('transportReimburseDesc').value;
   document.getElementById('depositPct').value = s.depositPct || '50';
+  document.getElementById('depositTiming').value = s.depositTiming || '雙方簽署本合約當天';
+  document.getElementById('latePenalty').checked = s.latePenalty !== false;
+  document.getElementById('recordingUse').value = s.recordingUse || '內部存檔紀錄';
   document.getElementById('allowRecording').checked = !!s.allowRecording;
   document.getElementById('materialAuth').checked = !!s.materialAuth;
   document.getElementById('funContact').value = s.funContact || '0';
