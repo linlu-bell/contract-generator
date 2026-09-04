@@ -107,6 +107,9 @@
   #doc .sub-clause-title { font-weight: 700; color: #3a2a52; font-size: 13px; margin: 12px 0 6px; page-break-after: avoid; break-after: avoid; }
   #doc ol.clause-list { margin: 0; padding-left: 20px; }
   #doc ol.clause-list li { margin-bottom: 8px; page-break-inside: avoid; break-inside: avoid; }
+  #doc ul.sched-list { margin: 4px 0 0; padding-left: 18px; list-style: none; }
+  #doc ul.sched-list li { margin-bottom: 2px; }
+  #doc ul.sched-list li::before { content: '・'; margin-left: -14px; }
   #doc .fee-table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; font-size: 12.5px; }
   #doc .fee-table td { padding: 5px 4px; border-bottom: 1px solid #eee; }
   #doc .fee-table tr.total td { font-weight: 700; color: var(--purple); border-bottom: none; padding-top: 8px; }
@@ -180,6 +183,15 @@
       <div class="checkbox-row" id="scaleNoteRow" style="display:none;">
         <input type="checkbox" id="scaleNote" onchange="render()">
         <div class="label-text"><b>加入人數規模但書</b>：因人數規模較大，現場示範與個別點評僅能挑選部分學員／參與者進行，其餘由旁觀學習。</div>
+      </div>
+
+      <div id="paBlock" style="display:none;">
+        <label style="margin-top:10px;">擴音設備由誰準備</label>
+        <div class="toggle">
+          <div class="opt selected" data-k="paMode" data-v="self" onclick="setToggle('paMode','self')">乙方自備</div>
+          <div class="opt" data-k="paMode" data-v="client" onclick="setToggle('paMode','client')">甲方提供</div>
+        </div>
+        <div class="hint">外場活動通常用甲方現場的設備</div>
       </div>
     </div>
 
@@ -257,6 +269,29 @@
       <div class="label-text"><b>甲方有提供品牌素材／IP</b>（商標、吉祥物、既有角色設定等）：加入「甲方素材所有權不因本案受影響，乙方非經同意不得挪作他用」條款。</div>
     </div>
 
+    <div id="storyOwnBlock" style="display:none;">
+      <label style="margin-top:10px;">這次講誰的故事</label>
+      <div class="toggle">
+        <div class="opt selected" data-k="storyOwner" data-v="own" onclick="setToggle('storyOwner','own')">自己的故事</div>
+        <div class="opt" data-k="storyOwner" data-v="licensed" onclick="setToggle('storyOwner','licensed')">別人的故事</div>
+      </div>
+      <div class="hint">講別人的繪本（例如蹦奇、指定出版品）會加一條「甲方保證擁有繪本授權，授權有瑕疵導致乙方被告時甲方負責賠償」</div>
+    </div>
+
+    <h2 class="section-title">加購條款（預設全開，不需要再取消）</h2>
+    <div class="checkbox-row">
+      <input type="checkbox" id="clausePromo" checked onchange="render()">
+      <div class="label-text"><b>社群宣傳</b>：乙方可評估是否於自有社群宣傳本活動，內容需雙方確認，發布後甲方要改須付行政處理費。</div>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="clauseWeather" checked onchange="render()">
+      <div class="label-text"><b>天候不可抗力</b>：颱風地震等因素導致活動無法舉行，甲方於活動前一日通知取消，訂金退還。</div>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="clauseDispute" checked onchange="render()">
+      <div class="label-text"><b>尾款爭議處理期限</b>：對活動執行有爭議，應於活動結束後 7 個工作日內以書面提出。</div>
+    </div>
+
     <h2 class="section-title">FUN星球聯絡窗口</h2>
     <select id="funContact" onchange="render()">
       <option value="0">劉珽愉（小魚姐姐）</option>
@@ -292,7 +327,7 @@ const SELLER = {
   phone: '0982132674'
 };
 
-let state = { actTypes: ['event'], scheduleMode: 'single', feeMode: 'simple', transportMode: 'none' };
+let state = { actTypes: ['event'], scheduleMode: 'single', feeMode: 'simple', transportMode: 'none', paMode: 'self', storyOwner: 'own' };
 const DOC_TITLE = '合作契約書';
 let feeItems = [{ uid: 1, name: '', amount: '' }];
 let uidSeed = 2;
@@ -342,6 +377,8 @@ function syncFormVisibility() {
   document.getElementById('singleScheduleBlock').style.display = state.scheduleMode === 'single' ? 'block' : 'none';
   document.getElementById('scaleNoteRow').style.display = (hasType('training') && state.scheduleMode === 'single') ? 'flex' : 'none';
   document.getElementById('planningScopeBlock').style.display = hasType('planning') ? 'block' : 'none';
+  document.getElementById('paBlock').style.display = hasType('event') ? 'block' : 'none';
+  document.getElementById('storyOwnBlock').style.display = hasLiveType() ? 'block' : 'none';
   document.getElementById('recordingUseBlock').style.display = document.getElementById('allowRecording').checked ? 'block' : 'none';
   document.getElementById('clientAssetRow').style.display = hasType('planning') ? 'flex' : 'none';
   document.getElementById('simpleFeeBlock').style.display = state.feeMode === 'simple' ? 'block' : 'none';
@@ -399,25 +436,47 @@ function getIntroText(clientName, eventTitle) {
   return `緣甲方主辦「${et}」，委任乙方進行${words.join('、')}（以下簡稱${caseWord()}），為確保${caseWord()}順利進行，甲、乙雙方協議訂定條款如下：`;
 }
 
-function getEventClauses() {
-  const multiSchedule = state.scheduleMode === 'multi';
+// 第一條：把日期／時間／地點（人數有填才出現）做成子條列，跟小魚實際在用的合約寫法一致
+function getScheduleClause(label, sched, showDetail) {
+  if (state.scheduleMode === 'multi') {
+    return `${label}：本案各場次之日期、時間、地點詳見附件報價單。`;
+  }
+  // 複選多種合作類型時，日期地點只在第一個區塊列出，其餘區塊引用即可，避免整份重複
+  if (!showDetail) {
+    return `${label}：同前述辦理時間與地點。`;
+  }
+  const rows = [
+    `日期：${sched.date ? toRocDate(sched.date) : '＿＿＿＿＿＿'}`,
+    `時間：${sched.time || '＿＿＿＿＿＿'}`,
+    `地點：${sched.location || '＿＿＿＿＿＿'}`
+  ];
+  if (sched.headcount) rows.push(`參與人數：${sched.headcount}`);
+  return `${label}：<ul class="sched-list">${rows.map(r => `<li>${r}</li>`).join('')}</ul>`;
+}
+
+function getEventClauses(sched, showSchedDetail) {
+  const venueSentence = state.paMode === 'client'
+    ? `甲方應提供已架設好擴音設備之活動場地。`
+    : `甲方應提供合適之活動場地，並由乙方自行攜帶故事表演所需之教學擴音設備。`;
   return [
-    multiSchedule
-      ? `本案各場次之日期、時間、地點與參與人數詳見附件報價單。甲方需於各場次執行日前一個月提供場地照片或影片供乙方評估；若場地不符合需求（如非密閉空間、擴音設備不足等），雙方需就此協商解決。`
-      : `本活動日期時間與場地：甲方需於活動前一個月提供場地照片或影片供乙方評估。若場地不符合需求（如非密閉空間、擴音設備不足等），雙方需就此協商解決。`,
-    `甲方應提供合適之活動場地，並由乙方自行攜帶故事表演所需之教學擴音設備。召集觀眾、宣傳、主持等事項由甲方負責，活動當日故事人員抵達現場後，負責將故事完整呈現。活動進行中，甲方應提供至少1位工作人員駐守現場，以便突發狀況給予支援。`,
-    `若需乙方故事人員協助進行說故事以外的活動（例如訪談、主持、導覽或融入商品介紹等），甲方應在活動討論階段及乙方報價之前明確提出相關需求。一經報價確定，將不再接受任何增添要求。`,
-    `甲方應自行承擔因活動規劃不良所產生的風險與責任（例如場地設置不當、擴音設備不足、活動時間衝突、參加人數超出場地容量等問題）。若因規劃不當導致乙方無法順利執行活動，或其他相關當事人受到損失或損害，甲方需負責賠償所有損失及損害，乙方不需對此承擔任何責任。`,
+    getScheduleClause('活動日期時間與場地', sched, showSchedDetail),
+    state.scheduleMode === 'multi'
+      ? `甲方需於各場次公布活動場地訊息前一個月，將場地相關資訊或場地勘查照片告知乙方，包含場地大小、設備清單（如麥克風、投影機）、預計觀眾人數等，以供乙方評估場地是否符合本活動需求。若乙方認為場地不符合需求，需在一週內提出反對意見，雙方就此協商解決；如乙方未在規定時間內提出反對意見，視為同意該場地。`
+      : `甲方需在公布活動場地訊息前一個月，將場地相關資訊或場地勘查照片告知乙方，包含場地大小、設備清單（如麥克風、投影機）、預計觀眾人數等，以供乙方評估場地是否符合本活動需求。若乙方認為場地不符合需求，需在一週內提出反對意見，雙方就此協商解決；如乙方未在規定時間內提出反對意見，視為同意該場地。`,
+    `${venueSentence}召集觀眾、宣傳、主持等事項由甲方負責，活動當日故事人員抵達現場後，負責將故事完整呈現。活動進行中，甲方應提供至少1位工作人員駐守現場，以便突發狀況給予支援，如協調場地、處理設備問題或緊急聯絡乙方。`,
+    `若需乙方故事人員協助進行說故事以外的活動（例如訪談、主持、導覽或融入商品介紹等），甲方應在活動討論階段及乙方報價之前明確提出相關需求。一經報價確定，將不再接受任何增添要求；如甲方於報價後提出需求，乙方有權另行報價。`,
+    `甲方應自行承擔因活動規劃不良所產生的風險與責任（例如場地設置不當、擴音設備不足、活動時間衝突、設備故障、參加人數超出場地容量等問題）。若因規劃不當導致乙方無法順利執行活動，或其他相關當事人受到損失或損害，甲方需負責賠償所有損失及損害，乙方不需對此承擔任何責任。`,
     `若乙方因個人因素導致活動無法舉行，乙方應在發現無法舉行時，立即通知甲方，並負擔甲方因此遭受的直接損失（包括但不限於預付款項、預訂場地、設備租用費用、廣告宣傳費用等）。若乙方無法履行本${docWord()}，亦不得對甲方提出任何索賠或追究責任。`
   ];
 }
 
-function getTrainingClauses(scaleNoteOn, headcount) {
+function getTrainingClauses(scaleNoteOn, headcount, sched, showSchedDetail) {
   const multiSchedule = state.scheduleMode === 'multi';
   const list = [
+    getScheduleClause('培訓日期時間與場地', sched, showSchedDetail),
     multiSchedule
-      ? `本案各場次之日期、時間、地點與參與人數詳見附件報價單。甲方需於各場次執行日前提供場地資訊，並確保場地具備基本教學設備（投影設備、麥克風、白板等），供乙方評估是否符合培訓需求。`
-      : `培訓日期時間與場地：甲方需於培訓執行日前提供場地資訊，並確保場地具備基本教學設備（投影設備、麥克風、白板等），供乙方評估是否符合本次培訓需求。`,
+      ? `甲方需於各場次執行日前提供場地資訊，並確保場地具備基本教學設備（投影設備、麥克風、白板等），供乙方評估是否符合培訓需求。`
+      : `甲方需於培訓執行日前提供場地資訊，並確保場地具備基本教學設備（投影設備、麥克風、白板等），供乙方評估是否符合本次培訓需求。`,
     `甲方應於培訓開始前完成學員報到與場地佈置，並提供至少1位工作人員駐守現場，以便突發狀況給予支援。`
   ];
   if (scaleNoteOn && !multiSchedule) {
@@ -439,10 +498,18 @@ function getPlanningClauses(exclusions) {
   return list;
 }
 
-function getServiceSections(scaleNoteOn, headcount, exclusions) {
+function getServiceSections(scaleNoteOn, headcount, exclusions, sched) {
   const sections = [];
-  if (hasType('event')) sections.push({ label: '演出活動', clauses: getEventClauses() });
-  if (hasType('training')) sections.push({ label: '培訓課程', clauses: getTrainingClauses(scaleNoteOn, headcount) });
+  // firstLive：第一個現場類區塊才列完整日期地點，第二個以後引用前述
+  let firstLiveUsed = false;
+  if (hasType('event')) {
+    sections.push({ label: '演出活動', clauses: getEventClauses(sched, !firstLiveUsed) });
+    firstLiveUsed = true;
+  }
+  if (hasType('training')) {
+    sections.push({ label: '培訓課程', clauses: getTrainingClauses(scaleNoteOn, headcount, sched, !firstLiveUsed) });
+    firstLiveUsed = true;
+  }
   if (hasType('planning')) sections.push({ label: '企劃專案', clauses: getPlanningClauses(exclusions) });
   return sections;
 }
@@ -459,6 +526,10 @@ function getCopyrightClauses(allowRecording, materialAuth, clientAsset, recordin
   const list = [];
 
   if (hasLiveType()) {
+    // 講別人的繪本／IP 時，把授權瑕疵的風險留在甲方（沿用蹦奇、工研院合約的寫法）
+    if (state.storyOwner === 'licensed') {
+      list.push(`甲方保證擁有完整權利並有權授權乙方使用本合作繪本，及擁有進行此授權的必要權利。甲方同意承擔因其授權而導致的任何爭議或法律責任；若因甲方授權瑕疵導致乙方受第三方提告，甲方應賠償乙方因此產生的一切費用（包括訴訟費、和解金等）。`);
+    }
     list.push(`乙方因參與本${actWord}所提供之教案、故事道具、教具及乙方人員之肖像權，其智慧財產權與相關權利概歸乙方所有。`);
     if (allowRecording) {
       list.push(`本${actWord}如有錄影需求，應事先取得乙方同意。甲方所進行之影音紀錄，其著作財產權歸乙方所有，乙方授權甲方僅得於「${recordingUse || '內部存檔紀錄'}」範圍內使用，限甲方內部教育訓練使用，不得對外公開播放、傳輸，或作為商業販售、再授權第三方。`);
@@ -506,6 +577,9 @@ function render() {
   const allowRecording = document.getElementById('allowRecording').checked;
   const materialAuth = document.getElementById('materialAuth').checked;
   const clientAsset = document.getElementById('clientAsset').checked;
+  const clausePromo = document.getElementById('clausePromo').checked;
+  const clauseWeather = document.getElementById('clauseWeather').checked;
+  const clauseDispute = document.getElementById('clauseDispute').checked;
   const recordingUse = document.getElementById('recordingUse').value.trim();
   const depositTiming = document.getElementById('depositTiming').value.trim() || '雙方簽署本合約當天';
   const latePenalty = document.getElementById('latePenalty').checked;
@@ -548,7 +622,14 @@ function render() {
     <li>若因非可歸責乙方之事由中途終止合作，依乙方已完成之進度結算：已交付初稿或腳本階段，依該項目費用之 50% 計算；已完成初版製作尚未交付審閱階段，依 70% 計算；已交付審閱成品階段，依 80% 計算；成品已正式交付或上架者，視同全案執行完畢，應支付 100%。甲方已支付款項多退少補，且本案著作權歸屬不因中途終止而改變。</li>
   ` : '';
 
-  const serviceSections = getServiceSections(scaleNoteOn, headcount, planningExclusions);
+  // 天候不可抗力（只有現場類才有意義）
+  const weatherHtml = (clauseWeather && hasLiveType())
+    ? `<li>若因天候（例如颱風、龍捲風、水患、地震等）不可抗力因素導致活動無法如期舉行，甲方於活動前一日即通知乙方取消活動時，乙方得將訂金退還甲方。</li>`
+    : '';
+
+  const serviceSections = getServiceSections(scaleNoteOn, headcount, planningExclusions, {
+    date: eventDate, time: eventTime, location: eventLocation, headcount
+  });
   const isMultiSection = serviceSections.length > 1;
   const serviceSectionsHtml = isMultiSection
     ? serviceSections.map((s, i) => `
@@ -560,14 +641,12 @@ function render() {
   const copyrightList = getCopyrightClauses(allowRecording, materialAuth, clientAsset, recordingUse).map(t => `<li>${t}</li>`).join('');
 
   // 多場模式下條款本文已載明「詳見報價單」，不再重複一行
-  const metaLineHtml = (!hasLiveType() || state.scheduleMode === 'multi') ? ''
-    : `<div class="meta-line" style="font-size:12px;color:#666;margin:-4px 0 10px 20px;">
-        <span>日期：${eventDate ? toRocDate(eventDate) : '＿＿＿＿'}</span><span>時間：${eventTime || '＿＿＿＿'}</span><span>地點：${eventLocation || '＿＿＿＿'}</span><span>人數：${headcount || '＿＿＿＿'}</span>
-      </div>`;
-
+  const disputeSentence = clauseDispute
+    ? `若雙方對${hasLiveType() ? '活動' : '本案'}執行有爭議，應於${hasLiveType() ? '活動' : '交付'}結束後 7 個工作日內以書面形式提出並協商解決。`
+    : '';
   const finalPaymentHtml = hasLiveType()
-    ? `<li>甲方需於活動場次全數完成後三個工作天內支付尾款，以匯款或現金支付至乙方指定帳戶。</li>`
-    : `<li>甲方需於乙方交付完成品後七個工作天內支付尾款，以匯款或現金支付至乙方指定帳戶。</li>`;
+    ? `<li>甲方需於活動場次全數完成後三個工作天內支付尾款，以匯款或現金支付至乙方指定帳戶。${disputeSentence}</li>`
+    : `<li>甲方需於乙方交付完成品後七個工作天內支付尾款，以匯款或現金支付至乙方指定帳戶。${disputeSentence}</li>`;
 
   const feeRows = state.feeMode === 'itemized'
     ? feeItems.filter(i => i.name || i.amount).map(i => `
@@ -605,7 +684,6 @@ function render() {
 
     <div class="clause-title">一、${getSectionOneTitle()}</div>
     ${serviceSectionsHtml}
-    ${metaLineHtml}
 
     <div class="clause-title">二、費用說明</div>
     <table class="fee-table">
@@ -613,12 +691,14 @@ function render() {
       <tr class="total"><td>總金額${state.transportMode==='reimburse' ? '（不含交通出勤費，另計）' : ''}</td><td style="text-align:right;">${fmt(totalAmount)}</td></tr>
     </table>
     ${referQuoteNote}
+    ${clausePromo ? `<ol class="clause-list" style="margin-top:10px;"><li>經甲方提出需求，乙方可評估是否於所經營之社群平台宣傳本${hasLiveType() ? '活動' : '案'}。乙方若同意協助宣傳，宣傳內容需經雙方確認，一經發布後則不得更改。如甲方需修改已發布內容，須提前告知並支付額外行政處理費（由乙方另行報價）；若造成實質損害，雙方可再議品牌損失相關責任。</li></ol>` : ''}
 
     <div class="clause-title">三、費用支付方式</div>
     <ol class="clause-list">
       <li>${depositTiming}，甲方應向乙方支付${moneyWord()}的 ${depositPct}%（新台幣 ${fmt(deposit)} 元）作為訂金。</li>
       ${refundHtml}
       ${planningTerminateHtml}
+      ${weatherHtml}
       ${finalPaymentHtml}
       ${state.transportMode === 'reimburse' ? `<li>${transportReimburseDesc}</li>` : ''}
       ${latePenalty ? `<li>如有逾期未付款情形，每逾一日甲方應按${moneyWord()}之 1% 計付逾期費用，直到全部支付為止。</li>` : ''}
@@ -702,6 +782,9 @@ function getState() {
     scaleNote: document.getElementById('scaleNote').checked,
     planningExclusions: document.getElementById('planningExclusions').value,
     clientAsset: document.getElementById('clientAsset').checked,
+    clausePromo: document.getElementById('clausePromo').checked,
+    clauseWeather: document.getElementById('clauseWeather').checked,
+    clauseDispute: document.getElementById('clauseDispute').checked,
     simpleFeeAmount: document.getElementById('simpleFeeAmount').value,
     referQuote: document.getElementById('referQuote').checked,
     transportFee: document.getElementById('transportFee').value,
@@ -722,6 +805,8 @@ function applyState(s) {
   // 舊版編輯連結相容：actType（單選字串）→ actTypes（複選陣列）
   if (!state.actTypes) state.actTypes = [state.actType || 'event'];
   if (!state.scheduleMode) state.scheduleMode = 'single';
+  if (!state.paMode) state.paMode = 'self';
+  if (!state.storyOwner) state.storyOwner = 'own';
   delete state.actType;
   delete state.docType; // 文件類型已統一為「合作契約書」，不再區分合約／備忘錄
 
@@ -747,6 +832,9 @@ function applyState(s) {
   document.getElementById('scaleNote').checked = !!s.scaleNote;
   document.getElementById('planningExclusions').value = s.planningExclusions || '';
   document.getElementById('clientAsset').checked = !!s.clientAsset;
+  document.getElementById('clausePromo').checked = s.clausePromo !== false;
+  document.getElementById('clauseWeather').checked = s.clauseWeather !== false;
+  document.getElementById('clauseDispute').checked = s.clauseDispute !== false;
   document.getElementById('simpleFeeAmount').value = s.simpleFeeAmount || '';
   document.getElementById('referQuote').checked = s.referQuote !== false;
   document.getElementById('transportFee').value = s.transportFee || '';
