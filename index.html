@@ -119,6 +119,10 @@
   #doc .sign-block .field-row { display:flex; margin: 2px 0; }
   #doc .sign-block .field-label { display:inline-block; width: 5.6em; flex-shrink:0; white-space: nowrap; }
   #doc .sign-space { height: 92px; }
+  #doc .bank-info { page-break-inside: avoid; break-inside: avoid; }
+  #doc .attachment-page { page-break-before: always; break-before: page; padding-top: 10px; }
+  #doc .attachment-page h4 { font-size: 15px; font-weight: 700; color: var(--purple); margin: 0 0 14px; }
+  #doc .attachment-page img { max-width: 100%; border: 1px solid #ddd; }
   #doc .doc-date { text-align: center; margin-top: 28px; font-size: 13px; }
 
   @media print { body { background: #fff; } .form-panel, .pdf-btn { display:none; } .app { padding:0; } }
@@ -291,6 +295,10 @@
       <input type="checkbox" id="clauseDispute" checked onchange="render()">
       <div class="label-text"><b>尾款爭議處理期限</b>：對活動執行有爭議，應於活動結束後 7 個工作日內以書面提出。</div>
     </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="attachPassbook" onchange="render()">
+      <div class="label-text"><b>附上存摺封面影本</b>：合約最後另起一頁放存摺封面。學校、公家機關等會計要求時才勾。</div>
+    </div>
 
     <h2 class="section-title">FUN星球聯絡窗口</h2>
     <select id="funContact" onchange="render()">
@@ -321,6 +329,8 @@ const CONTACTS = [
 ];
 const SELLER = {
   name: '星球能量無限但時間有限公司',
+  bank: '國泰世華銀行（013）東高雄分行',
+  account: '014-03-501665-2',
   taxId: '00012776',
   rep: '盧佳伶',
   addr: '高雄巿苓雅區憲政路123巷8號4樓',
@@ -580,6 +590,7 @@ function render() {
   const clausePromo = document.getElementById('clausePromo').checked;
   const clauseWeather = document.getElementById('clauseWeather').checked;
   const clauseDispute = document.getElementById('clauseDispute').checked;
+  const attachPassbook = document.getElementById('attachPassbook').checked;
   const recordingUse = document.getElementById('recordingUse').value.trim();
   const depositTiming = document.getElementById('depositTiming').value.trim() || '雙方簽署本合約當天';
   const latePenalty = document.getElementById('latePenalty').checked;
@@ -648,6 +659,13 @@ function render() {
     ? `<li>甲方需於活動場次全數完成後三個工作天內支付尾款，以匯款或現金支付至乙方指定帳戶。${disputeSentence}</li>`
     : `<li>甲方需於乙方交付完成品後七個工作天內支付尾款，以匯款或現金支付至乙方指定帳戶。${disputeSentence}</li>`;
 
+  // 乙方指定帳戶：整塊不可分割，避免跨頁時帳號被拆開讓客戶抄錯
+  const bankInfoHtml = `<li class="bank-info">乙方指定帳戶如下${attachPassbook ? '（存摺封面影本詳見附件）' : ''}：<ul class="sched-list">
+    <li>銀行：${SELLER.bank}</li>
+    <li>戶名：${SELLER.name}</li>
+    <li>帳號：${SELLER.account}</li>
+  </ul></li>`;
+
   const feeRows = state.feeMode === 'itemized'
     ? feeItems.filter(i => i.name || i.amount).map(i => `
         <tr><td>${i.name || '（項目）'}</td><td style="text-align:right;">${fmt(parseFloat(i.amount)||0)}</td></tr>
@@ -700,6 +718,7 @@ function render() {
       ${planningTerminateHtml}
       ${weatherHtml}
       ${finalPaymentHtml}
+      ${bankInfoHtml}
       ${state.transportMode === 'reimburse' ? `<li>${transportReimburseDesc}</li>` : ''}
       ${latePenalty ? `<li>如有逾期未付款情形，每逾一日甲方應按${moneyWord()}之 1% 計付逾期費用，直到全部支付為止。</li>` : ''}
     </ol>
@@ -743,6 +762,12 @@ function render() {
     </div>
 
     <div class="doc-date">中華民國<span class="suffix">${signDateStr}</span></div>
+
+    ${attachPassbook ? `
+    <div class="attachment-page">
+      <h4>附件：存摺封面影本</h4>
+      <img src="passbook.jpg" alt="存摺封面影本">
+    </div>` : ''}
   `;
 }
 
@@ -759,7 +784,7 @@ function downloadPdf() {
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['css', 'legacy'], avoid: ['li', '.sign-block', '.fee-table'] }
+    pagebreak: { mode: ['css', 'legacy'], avoid: ['li', '.sign-block', '.fee-table', '.bank-info'] }
   }).from(el).save();
 }
 
@@ -785,6 +810,7 @@ function getState() {
     clausePromo: document.getElementById('clausePromo').checked,
     clauseWeather: document.getElementById('clauseWeather').checked,
     clauseDispute: document.getElementById('clauseDispute').checked,
+    attachPassbook: document.getElementById('attachPassbook').checked,
     simpleFeeAmount: document.getElementById('simpleFeeAmount').value,
     referQuote: document.getElementById('referQuote').checked,
     transportFee: document.getElementById('transportFee').value,
@@ -835,6 +861,7 @@ function applyState(s) {
   document.getElementById('clausePromo').checked = s.clausePromo !== false;
   document.getElementById('clauseWeather').checked = s.clauseWeather !== false;
   document.getElementById('clauseDispute').checked = s.clauseDispute !== false;
+  document.getElementById('attachPassbook').checked = !!s.attachPassbook;
   document.getElementById('simpleFeeAmount').value = s.simpleFeeAmount || '';
   document.getElementById('referQuote').checked = s.referQuote !== false;
   document.getElementById('transportFee').value = s.transportFee || '';
