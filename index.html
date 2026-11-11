@@ -119,7 +119,7 @@
   #doc .sign-block .field-row { display:flex; margin: 2px 0; }
   #doc .sign-block .field-label { display:inline-block; width: 5.6em; flex-shrink:0; white-space: nowrap; }
   #doc .sign-space { height: 92px; }
-  #doc .bank-info { page-break-inside: avoid; break-inside: avoid; }
+  #doc .keep, #doc .bank-info { page-break-inside: avoid; break-inside: avoid; }
   #doc .attachment-page { page-break-before: always; break-before: page; padding-top: 10px; }
   #doc .attachment-page h4 { font-size: 15px; font-weight: 700; color: var(--purple); margin: 0 0 14px; }
   #doc .attachment-page img { max-width: 100%; border: 1px solid #ddd; }
@@ -447,6 +447,27 @@ function getIntroText(clientName, eventTitle) {
 }
 
 // 第一條：把日期／時間／地點（人數有填才出現）做成子條列，跟小魚實際在用的合約寫法一致
+// 分頁保護用：把第一條條款跟它的小標題綁在一起，避免標題孤零零留在頁尾。
+// 條款裡有巢狀清單（日期地點、匯款帳號），所以要算層數找最外層的 </li>。
+function splitFirstLi(html) {
+  const re = /<li\b[^>]*>|<\/li>/gi;
+  let depth = 0, m;
+  while ((m = re.exec(html))) {
+    if (m[0][1] === '/') {
+      depth--;
+      if (depth === 0) return [html.slice(0, m.index + 5), html.slice(m.index + 5).trim()];
+    } else depth++;
+  }
+  return [html, ''];
+}
+
+// 產出「小標題＋第一條」不可拆區塊，其餘條款接在後面（編號從 2 開始接續）
+function titledClauses(titleHtml, liHtml) {
+  const [first, rest] = splitFirstLi(liHtml);
+  return `<div class="keep">${titleHtml}<ol class="clause-list">${first}</ol></div>` +
+         (rest ? `<ol class="clause-list" start="2">${rest}</ol>` : '');
+}
+
 function getScheduleClause(label, sched, showDetail) {
   if (state.scheduleMode === 'multi') {
     return `${label}：本案各場次之日期、時間、地點詳見附件報價單。`;
@@ -642,12 +663,15 @@ function render() {
     date: eventDate, time: eventTime, location: eventLocation, headcount
   });
   const isMultiSection = serviceSections.length > 1;
+  const sectionOneTitleHtml = `<div class="clause-title">一、${getSectionOneTitle()}</div>`;
   const serviceSectionsHtml = isMultiSection
-    ? serviceSections.map((s, i) => `
-        <div class="sub-clause-title">（${CN_NUM[i]}）${s.label}</div>
-        <ol class="clause-list">${s.clauses.map(c => `<li>${c}</li>`).join('')}</ol>
-      `).join('')
-    : `<ol class="clause-list">${serviceSections[0].clauses.map(c => `<li>${c}</li>`).join('')}</ol>`;
+    ? serviceSections.map((s, i) => {
+        const subTitle = `<div class="sub-clause-title">（${CN_NUM[i]}）${s.label}</div>`;
+        const li = s.clauses.map(c => `<li>${c}</li>`).join('');
+        // 第一個子區塊要連大標題一起綁，否則「一、服務進行」會獨自留在頁尾
+        return titledClauses(i === 0 ? sectionOneTitleHtml + subTitle : subTitle, li);
+      }).join('')
+    : titledClauses(sectionOneTitleHtml, serviceSections[0].clauses.map(c => `<li>${c}</li>`).join(''));
 
   const copyrightList = getCopyrightClauses(allowRecording, materialAuth, clientAsset, recordingUse).map(t => `<li>${t}</li>`).join('');
 
@@ -692,27 +716,27 @@ function render() {
 
     <h3>${DOC_TITLE}</h3>
 
-    <div class="party-block">
+    <div class="party-block keep">
       <div class="party-line">${partyRole}：</div>
       <div class="party-line">${clientName || '＿＿＿＿＿＿＿＿＿＿'}<span class="suffix">（以下簡稱甲方）</span></div>
       <div class="party-line">${SELLER.name}<span class="suffix">（以下簡稱乙方）</span></div>
     </div>
 
-    <div class="intro">${getIntroText(clientName, eventTitle)}</div>
+    <div class="intro keep">${getIntroText(clientName, eventTitle)}</div>
 
-    <div class="clause-title">一、${getSectionOneTitle()}</div>
     ${serviceSectionsHtml}
 
-    <div class="clause-title">二、費用說明</div>
-    <table class="fee-table">
-      ${feeRows}${transportRow}
-      <tr class="total"><td>總金額${state.transportMode==='reimburse' ? '（不含交通出勤費，另計）' : ''}</td><td style="text-align:right;">${fmt(totalAmount)}</td></tr>
-    </table>
-    ${referQuoteNote}
-    ${clausePromo ? `<ol class="clause-list" style="margin-top:10px;"><li>經甲方提出需求，乙方可評估是否於所經營之社群平台宣傳本${hasLiveType() ? '活動' : '案'}。乙方若同意協助宣傳，宣傳內容需經雙方確認，一經發布後則不得更改。如甲方需修改已發布內容，須提前告知並支付額外行政處理費（由乙方另行報價）；若造成實質損害，雙方可再議品牌損失相關責任。</li></ol>` : ''}
+    <div class="keep">
+      <div class="clause-title">二、費用說明</div>
+      <table class="fee-table">
+        ${feeRows}${transportRow}
+        <tr class="total"><td>總金額${state.transportMode==='reimburse' ? '（不含交通出勤費，另計）' : ''}</td><td style="text-align:right;">${fmt(totalAmount)}</td></tr>
+      </table>
+      ${referQuoteNote}
+    </div>
+    ${clausePromo ? `<div class="keep"><ol class="clause-list" style="margin-top:10px;"><li>經甲方提出需求，乙方可評估是否於所經營之社群平台宣傳本${hasLiveType() ? '活動' : '案'}。乙方若同意協助宣傳，宣傳內容需經雙方確認，一經發布後則不得更改。如甲方需修改已發布內容，須提前告知並支付額外行政處理費（由乙方另行報價）；若造成實質損害，雙方可再議品牌損失相關責任。</li></ol></div>` : ''}
 
-    <div class="clause-title">三、費用支付方式</div>
-    <ol class="clause-list">
+    ${titledClauses(`<div class="clause-title">三、費用支付方式</div>`, `
       <li>${depositTiming}，甲方應向乙方支付${moneyWord()}的 ${depositPct}%（新台幣 ${fmt(deposit)} 元）作為訂金。</li>
       ${refundHtml}
       ${planningTerminateHtml}
@@ -721,24 +745,17 @@ function render() {
       ${bankInfoHtml}
       ${state.transportMode === 'reimburse' ? `<li>${transportReimburseDesc}</li>` : ''}
       ${latePenalty ? `<li>如有逾期未付款情形，每逾一日甲方應按${moneyWord()}之 1% 計付逾期費用，直到全部支付為止。</li>` : ''}
-    </ol>
+    `)}
 
-    <div class="clause-title">四、著作權</div>
-    <ol class="clause-list">
-      ${copyrightList}
-    </ol>
+    ${titledClauses(`<div class="clause-title">四、著作權</div>`, copyrightList)}
 
-    <div class="clause-title">五、違約</div>
-    <ol class="clause-list">
-      <li>任一方如有違約之情事發生，他方得向違約方請求${moneyWord()}之20%做為損害賠償（包括但不限於訴訟費及律師費用），並得終止或解除本${docWord()}關係。</li>
-    </ol>
+    ${titledClauses(`<div class="clause-title">五、違約</div>`, `<li>任一方如有違約之情事發生，他方得向違約方請求${moneyWord()}之20%做為損害賠償（包括但不限於訴訟費及律師費用），並得終止或解除本${docWord()}關係。</li>`)}
 
-    <div class="clause-title">六、附則</div>
-    <ol class="clause-list">
+    ${titledClauses(`<div class="clause-title">六、附則</div>`, `
       <li>本合約書之解釋及其他未盡事宜，悉依中華民國現行相關法令辦理。</li>
       <li>因本${docWord()}滋生爭議時，雙方同意先經友好協商解決；如無法協商解決而涉訟時，雙方同意以台灣高雄地方法院為第一審管轄法院。</li>
       <li>本合約書正本壹式貳份，甲乙雙方各執存壹份為憑。</li>
-    </ol>
+    `)}
 
     <div class="sign-block">
       <div class="col">
@@ -761,10 +778,10 @@ function render() {
       </div>
     </div>
 
-    <div class="doc-date">中華民國<span class="suffix">${signDateStr}</span></div>
+    <div class="doc-date keep">中華民國<span class="suffix">${signDateStr}</span></div>
 
     ${attachPassbook ? `
-    <div class="attachment-page">
+    <div class="attachment-page keep">
       <h4>附件：存摺封面影本</h4>
       <img src="passbook.jpg" alt="存摺封面影本">
     </div>` : ''}
@@ -784,7 +801,7 @@ function downloadPdf() {
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['css', 'legacy'], avoid: ['li', '.sign-block', '.fee-table', '.bank-info'] }
+    pagebreak: { mode: ['css', 'legacy'], avoid: ['li', 'tr', '.keep', '.sign-block', '.fee-table', '.bank-info', '.doc-header', '.party-block', '.intro', '.doc-date', '.attachment-page'] }
   }).from(el).save();
 }
 
